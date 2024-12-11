@@ -12,7 +12,7 @@ namespace dai.dataAccess.DbContext
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
-            optionsBuilder.UseSqlServer("Server=TUASAN;Database=DaiNoteDb;uid=sa;pwd=123456789;Trusted_Connection=SSPI;Encrypt=false;TrustServerCertificate=true");
+            optionsBuilder.UseSqlServer("Server=tcp:dainote.database.windows.net,1433;Initial Catalog=DaiNoteDB;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Default");
             //optionsBuilder.UseSqlServer("Server=DESKTOP-3J5AMMQ;Database=DaiNoteDb;uid=sa;pwd=123456789;Trusted_Connection=SSPI;Encrypt=false;TrustServerCertificate=true");
         }
         public DbSet<UserModel> userModels { get; set; }
