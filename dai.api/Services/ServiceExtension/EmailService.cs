@@ -145,7 +145,7 @@ namespace dai.api.Services.ServicesAPI
                     <p>Hello!</p>
                     <p>You have been invited to collaborate on the board <strong>{boardName}</strong> by username <strong>{senderName}</strong>.</p>
                     <p>To accept the invitation, simply click the button below:</p>
-                    <a href='http://localhost:8080/accept-invitation?code={invitationCode}' class='cta-button'>Accept Invitation</a>
+                    <a href='https://dainote.netlify.app/accept-invitation?code={invitationCode}' class='cta-button'>Accept Invitation</a>
                 </div>
                 <div class='footer'>
                     <p>If you did not expect this invitation, you can safely ignore this email.</p>

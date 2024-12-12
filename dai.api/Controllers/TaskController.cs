@@ -337,7 +337,7 @@ public class TaskController : ControllerBase
                                                                 <li><strong>Deadline:</strong> {existingTask.Finish_At.ToString("f")}</li>
                                                             </ul>
                                                             <p>Please check your task dashboard for more details.</p>
-                                                            <a href='http://localhost:8080/board-list/{taskDetails.BoardId}' class='button'>View Task Board</a>
+                                                            <a href='https://dainote.netlify.app/board-list/{taskDetails.BoardId}' class='button'>View Task Board</a>
                                                             <p>Best regards,<br><strong>DAI Team</strong></p>
                                                         </div>
                                                         <div class='footer'>
