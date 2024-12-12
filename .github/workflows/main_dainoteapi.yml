@@ -53,5 +53,5 @@ jobs:
         with:
           app-name: 'DaiNoteAPI'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_D4D904811948430A94941D19DC80F4B4 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BCDE95AB5B4A44D3976A37290208F81A }}
           package: .
