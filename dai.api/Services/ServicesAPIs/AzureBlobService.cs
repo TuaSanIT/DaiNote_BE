@@ -6,7 +6,7 @@ namespace dai.api.Services.ServiceExtension
     {
         BlobServiceClient _blobServiceClient;
         BlobContainerClient _blobContainerClient;
-        string azureConnectionstring = "DefaultEndpointsProtocol=https;AccountName=dainoteblob;AccountKey=LVxaLYY8aWvXmxeE9HOpuvkB3Wco/8IwXSk8Yg4xIifasdWw6yJTCUvlJB8rY5A2pfxl+/mxSlNd+AStWCRHuw==;EndpointSuffix=core.windows.net";
+        string azureConnectionstring = "DefaultEndpointsProtocol=https;AccountName=dainoteblob;AccountKey=edFJYx1B++OGn9NHPKNV82iu/7E81gRRN7QTXSQo/GW1SHqp7t47Lwu+uXdQaaQ6ZbrKmqSuLKlU+AStkAtDAQ==;EndpointSuffix=core.windows.net";
 
         public AzureBlobService()
         {
