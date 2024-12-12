@@ -109,13 +109,13 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // CORS Configuration
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+//var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", builder =>
     {
-        builder.WithOrigins(allowedOrigins) // Sử dụng danh sách từ cấu hình
+        builder.WithOrigins("https://dainote.netlify.app", "http://localhost:8080") // Sử dụng danh sách từ cấu hình
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials();
