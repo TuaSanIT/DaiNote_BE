@@ -118,7 +118,6 @@ builder.Services.AddCors(options =>
         builder.WithOrigins(allowedOrigins) // Sử dụng danh sách từ cấu hình
                .AllowAnyHeader()
                .AllowAnyMethod()
-               .SetIsOriginAllowed(origin => true)
                .AllowCredentials();
     });
 });
