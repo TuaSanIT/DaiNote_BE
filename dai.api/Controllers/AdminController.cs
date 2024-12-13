@@ -37,7 +37,7 @@ namespace dai.api.Controllers
         {
             var users = await _context.Users
                 .AsNoTracking()
-                .Where(u => u.Role != "Admin") // Lọc bỏ các user có vai trò là Admin
+                .Where(u => u.UserName != "admin") // Lọc bỏ các user có vai trò là Admin
                 .Select(u => new
                 {
                     u.Id,
