@@ -2,6 +2,7 @@
 using dai.dataAccess.DbContext;
 using dai.dataAccess.IRepositories;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -233,13 +234,13 @@ public class TaskRepository : ITaskRepository
 
     public async Task<IEnumerable<object>> GetUserTasksAsync(Guid userId)
     {
-
         // Step 1: Fetch all tasks with detailed information
         var userTasks = await _context.TaskInList
-            .Where(t => t.Task != null) 
-            .Include(t => t.Board) 
-                .ThenInclude(b => b.Collaborators) 
-            .Include(t => t.Task) 
+            .Where(t => t.Task != null) // Ensure task is not null
+            .Include(t => t.Board)
+                .ThenInclude(b => b.Collaborators)
+            .Include(t => t.Board.Workspace) // Include workspace for ownership checks
+            .Include(t => t.Task)
             .Select(t => new
             {
                 TaskId = t.Task.Id,
@@ -252,53 +253,24 @@ public class TaskRepository : ITaskRepository
                 AvailableCheck = t.Task.AvailableCheck,
                 Position = t.Task.Position,
                 AssignedUsers = t.Task.AssignedToList,
-                //AssignTo = t.Task.AssignTo,
                 BoardName = t.Board.Name,
-                HasCollaborators = t.Board.Collaborators.Any(), 
-                Collaborators = t.Board.Collaborators.Select(c => c.User_Id).ToList(), 
-                IsCollaborator = t.Board.Collaborators.Any(c => c.User_Id == userId), 
-                IsBoardOwner = t.Board.Workspace.UserId == userId
+                HasCollaborators = t.Board.Collaborators.Any(),
+                Collaborators = t.Board.Collaborators.Select(c => c.User_Id).ToList(),
+                IsCollaborator = t.Board.Collaborators.Any(c => c.User_Id == userId),
+                IsBoardOwner = t.Board.Workspace.UserId == userId 
             })
             .ToListAsync();
 
-        var collaboratorBoardIds = userTasks
-                                            .Where(t => t.IsCollaborator)
-                                            .Select(t => t.BoardId)
-                                            .Distinct()
-                                            .ToList();
-
-        // Step 2: Filter tasks based on ownership and collaboration
+        // Step 2: Apply filtering logic
         var filteredTasks = userTasks
             .Where(t =>
-            t.AssignedUsers.Contains(userId) ||
-            (   t.AssignedUsers == null && 
-                (
-                    (t.IsBoardOwner && !t.HasCollaborators) || // User owns the board with no collaborators
-                    (t.HasCollaborators && t.Collaborators.Contains(userId) && t.IsCollaborator && t.BoardId.Equals(collaboratorBoardIds))  // User is a collaborator
-            ))
-        ).ToList();
+                t.IsBoardOwner &&
+                (!t.HasCollaborators) ||   (t.HasCollaborators && t.AssignedUsers.Contains(userId))
+            )
+            .ToList();
 
         // Step 3: Return sorted tasks
         return filteredTasks.OrderBy(t => t.Finish_At);
-
-        //// Step 2: Filter tasks based on ownership and collaboration
-        //var filteredTasks = userTasks
-        //    .Where(t =>
-        //        t.AssignTo == userId || // Include tasks explicitly assigned to the user
-        //        (t.AssignTo == null && // Include unassigned tasks only if:
-        //            (
-        //                (t.IsBoardOwner && !t.HasCollaborators) || // User owns the board, and it has no collaborators
-        //                (t.HasCollaborators && t.Collaborators.Contains(userId) && t.IsCollaborator && t.BoardId.Equals(collaboratorBoardIds)) // Refined collaborator condition
-        //            )
-        //        )
-        //    )
-        //    .ToList();
-
-        //// Step 3: Return sorted tasks
-        //return filteredTasks.OrderBy(t => t.Finish_At);
-
-        //return userTasks.OrderBy(t => t.Finish_At);
-
     }
 
     public async Task<IEnumerable<TaskModel>> GetTasksCreatedInMonthByBoardAsync(Guid boardId)

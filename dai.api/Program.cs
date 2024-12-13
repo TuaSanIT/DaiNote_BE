@@ -109,15 +109,16 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // CORS Configuration
-//var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", builder =>
     {
-        builder.WithOrigins("https://dainote.netlify.app", "http://localhost:8080") // Sử dụng danh sách từ cấu hình
+        builder.WithOrigins(allowedOrigins) // Sử dụng danh sách từ cấu hình
                .AllowAnyHeader()
                .AllowAnyMethod()
+               .SetIsOriginAllowed(origin => true)
                .AllowCredentials();
     });
 });
@@ -208,7 +209,7 @@ app.UseAuthentication();
 app.UseMiddleware<SessionJwtMiddleware>(); 
 app.UseAuthorization();
 
-app.MapHub<ChatHub>("/chatHub");
+app.MapHub<ChatHub>("/hubs/chat");
 app.MapControllers();
 
 app.Run();
