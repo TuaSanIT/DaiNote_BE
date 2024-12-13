@@ -75,7 +75,7 @@ namespace dai.api.Controllers
                 amount: 49000,
                 description: "VIP_DaiNote",
                 items: new List<ItemData> { new ItemData("VIP_Membership", 1, 49000) },
-                cancelUrl: $"{baseUrl}/payment-cancel",
+                cancelUrl: "https://dainote.netlify.app/payment-cancel",
                 returnUrl: $"{baseUrl}/api/payment/payment-callback?orderCode={orderCode}"
             );
 
