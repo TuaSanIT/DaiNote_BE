@@ -35,17 +35,21 @@ namespace dai.api.Controllers
         [HttpGet("get-all-users")]
         public async Task<IActionResult> GetAllUsers()
         {
-            var users = await _context.Users.AsNoTracking().Select(u => new
-            {
-                u.Id,
-                u.AvatarImage,
-                u.UserName,
-                u.Email,
-                u.FullName,
-                AddedOn = u.AddedOn.ToString("yyyy-MM-dd"),
-                u.IsOnline,
-                u.IsVipSupplier
-            }).ToListAsync();
+            var users = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.Role != "Admin") // Lọc bỏ các user có vai trò là Admin
+                .Select(u => new
+                {
+                    u.Id,
+                    u.AvatarImage,
+                    u.UserName,
+                    u.Email,
+                    u.FullName,
+                    AddedOn = u.AddedOn.ToString("yyyy-MM-dd"),
+                    u.IsOnline,
+                    u.IsVipSupplier
+                })
+                .ToListAsync();
 
             return Ok(new
             {
