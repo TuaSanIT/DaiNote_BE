@@ -1,6 +1,8 @@
 ﻿using dai.dataAccess.IRepositories;
-using iTextSharp.text.pdf;
-using iTextSharp.text;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
@@ -23,106 +25,102 @@ public class PdfController : ControllerBase
 
         using (var stream = new MemoryStream())
         {
-            var pdfDoc = new Document(PageSize.A4);
-            PdfWriter.GetInstance(pdfDoc, stream);
-            pdfDoc.Open();
+            var writer = new PdfWriter(stream);
+            var pdfDoc = new PdfDocument(writer);
+            var document = new Document(pdfDoc);
 
-            var titleFont = FontFactory.GetFont("Arial", 16, Font.BOLD);
-            var sectionFont = FontFactory.GetFont("Arial", 12, Font.BOLD);
-            var bodyFont = FontFactory.GetFont("Arial", 10);
+            // Title
+            document.Add(new Paragraph("Monthly Task Report")
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetFontSize(20));
 
-            pdfDoc.Add(new Paragraph("Monthly Task Report", titleFont));
-            pdfDoc.Add(new Chunk("\n"));
+            document.Add(new Paragraph("\n")); // Add space
 
             // Tasks Created This Month
-            pdfDoc.Add(new Paragraph("Tasks Created This Month", sectionFont));
-            pdfDoc.Add(new Chunk("\n")); // Add space
-
-            var createdTable = new PdfPTable(3) { WidthPercentage = 100 };
-            createdTable.SetWidths(new float[] { 1f, 1f, 1f });
-            createdTable.AddCell(new PdfPCell(new Phrase("Task Title", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
-            createdTable.AddCell(new PdfPCell(new Phrase("Created At", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
-            createdTable.AddCell(new PdfPCell(new Phrase("Finished At", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+            document.Add(new Paragraph("Tasks Created This Month").SetFontSize(14));
+            document.Add(new Paragraph("\n")); // Add space
 
             if (!tasksCreatedThisMonth.Any())
             {
-                pdfDoc.Add(new Paragraph("No tasks created this month.", bodyFont));
+                document.Add(new Paragraph("No tasks created this month."));
             }
             else
             {
+                var table = new Table(UnitValue.CreatePercentArray(3)).UseAllAvailableWidth();
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Task Title")));
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Created At")));
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Finished At")));
+
                 foreach (var task in tasksCreatedThisMonth)
                 {
-                    createdTable.AddCell(new PdfPCell(new Phrase(task.Title, bodyFont)));
-                    createdTable.AddCell(new PdfPCell(new Phrase(task.Create_At.ToString("g"), bodyFont)));
-                    createdTable.AddCell(new PdfPCell(new Phrase(task.Finish_At.ToString("g") ?? "N/A", bodyFont)));
+                    table.AddCell(new Paragraph(task.Title));
+                    table.AddCell(new Paragraph(task.Create_At.ToString("g")));
+                    table.AddCell(new Paragraph(task.Finish_At.ToString("g") ?? "N/A"));
                 }
-                pdfDoc.Add(createdTable);
+                document.Add(table);
             }
 
-            pdfDoc.Add(new Chunk("\n")); // Add space
+            document.Add(new Paragraph("\n")); // Add space
 
             // Tasks Done This Month
-            pdfDoc.Add(new Paragraph("Tasks Done This Month", sectionFont));
-            pdfDoc.Add(new Chunk("\n")); // Add space
-
-            var doneTable = new PdfPTable(3) { WidthPercentage = 100 };
-            doneTable.SetWidths(new float[] { 1f, 1f, 1f });
-            doneTable.AddCell(new PdfPCell(new Phrase("Task Title", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
-            doneTable.AddCell(new PdfPCell(new Phrase("Created At", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
-            doneTable.AddCell(new PdfPCell(new Phrase("Finished At", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+            document.Add(new Paragraph("Tasks Done This Month").SetFontSize(14));
+            document.Add(new Paragraph("\n")); // Add space
 
             if (!tasksDoneThisMonth.Any())
             {
-                pdfDoc.Add(new Paragraph("No tasks done this month.", bodyFont));
+                document.Add(new Paragraph("No tasks done this month."));
             }
             else
             {
+                var table = new Table(UnitValue.CreatePercentArray(3)).UseAllAvailableWidth();
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Task Title")));
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Created At")));
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Finished At")));
+
                 foreach (var task in tasksDoneThisMonth)
                 {
-                    doneTable.AddCell(new PdfPCell(new Phrase(task.Title, bodyFont)));
-                    doneTable.AddCell(new PdfPCell(new Phrase(task.Create_At.ToString("g"), bodyFont)));
-                    doneTable.AddCell(new PdfPCell(new Phrase(task.Finish_At.ToString("g"), bodyFont)));
+                    table.AddCell(new Paragraph(task.Title));
+                    table.AddCell(new Paragraph(task.Create_At.ToString("g")));
+                    table.AddCell(new Paragraph(task.Finish_At.ToString("g")));
                 }
-                pdfDoc.Add(doneTable);
+                document.Add(table);
             }
 
-            pdfDoc.Add(new Chunk("\n")); // Add space
+            document.Add(new Paragraph("\n")); // Add space
 
             // Tasks Over This Month
-            pdfDoc.Add(new Paragraph("Tasks Over This Month", sectionFont));
-            pdfDoc.Add(new Chunk("\n")); // Add space
-
-            var overTable = new PdfPTable(3) { WidthPercentage = 100 };
-            overTable.SetWidths(new float[] { 1f, 1f, 1f });
-            overTable.AddCell(new PdfPCell(new Phrase("Task Title", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
-            overTable.AddCell(new PdfPCell(new Phrase("Created At", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
-            overTable.AddCell(new PdfPCell(new Phrase("Finished At", sectionFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+            document.Add(new Paragraph("Tasks Over This Month").SetFontSize(14));
+            document.Add(new Paragraph("\n")); // Add space
 
             if (!tasksOverThisMonth.Any())
             {
-                pdfDoc.Add(new Paragraph("No tasks over this month.", bodyFont));
+                document.Add(new Paragraph("No tasks over this month."));
             }
             else
             {
+                var table = new Table(UnitValue.CreatePercentArray(3)).UseAllAvailableWidth();
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Task Title")));
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Created At")));
+                table.AddHeaderCell(new Cell().Add(new Paragraph("Finished At")));
+
                 foreach (var task in tasksOverThisMonth)
                 {
-                    overTable.AddCell(new PdfPCell(new Phrase(task.Title, bodyFont)));
-                    overTable.AddCell(new PdfPCell(new Phrase(task.Create_At.ToString("g"), bodyFont)));
-                    overTable.AddCell(new PdfPCell(new Phrase(task.Finish_At.ToString("g"), bodyFont)));
+                    table.AddCell(new Paragraph(task.Title));
+                    table.AddCell(new Paragraph(task.Create_At.ToString("g")));
+                    table.AddCell(new Paragraph(task.Finish_At.ToString("g")));
                 }
-                pdfDoc.Add(overTable);
+                document.Add(table);
             }
 
-            pdfDoc.Close();
-            var pdfBytes = stream.ToArray();
+            // Close document
+            document.Close();
 
+            // Save to Downloads folder
+            var pdfBytes = stream.ToArray();
             var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "MonthlyTaskReport.pdf");
             await System.IO.File.WriteAllBytesAsync(downloadsPath, pdfBytes);
 
             return Ok(new { message = "PDF generated successfully!", path = downloadsPath });
         }
     }
-
 }
-
-
