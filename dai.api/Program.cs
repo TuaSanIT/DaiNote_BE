@@ -209,7 +209,7 @@ app.UseAuthentication();
 app.UseMiddleware<SessionJwtMiddleware>(); 
 app.UseAuthorization();
 
-app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<ChatHub>("/chatHub");
 app.MapControllers();
 
 app.Run();
