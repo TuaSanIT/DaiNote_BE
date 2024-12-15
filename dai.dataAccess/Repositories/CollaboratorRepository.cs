@@ -84,7 +84,7 @@ namespace dai.dataAccess.Repositories
 
         public async Task<List<GET_UserInCollaborator>> GetCollaboratorsByBoardIdAsync(Guid boardId)
         {
-            // Get the board along with the user who created it and the collaborators
+
             var board = await _context.Boards
                 .Where(b => b.Id == boardId)
                 .Include(b => b.Workspace.User) // Assuming the user who created the board is the user associated with the workspace
@@ -97,7 +97,7 @@ namespace dai.dataAccess.Repositories
                 return new List<GET_UserInCollaborator>(); // Return an empty list if the board is not found
             }
 
-            // Create a list to hold the collaborators and the creator
+
             var collaborators = board.Collaborators
                 .Select(c => new GET_UserInCollaborator
                 {
@@ -109,7 +109,7 @@ namespace dai.dataAccess.Repositories
                 })
                 .ToList();
 
-            // Add the creator to the list if not already present
+
             var creator = new GET_UserInCollaborator
             {
                 UserId = board.Workspace.User.Id,
@@ -134,12 +134,12 @@ namespace dai.dataAccess.Repositories
 
             if (existingCollaborator != null)
             {
-                // Xóa bản ghi cũ
+
                 _context.Collaborators.Remove(existingCollaborator);
                 await _context.SaveChangesAsync();
             }
 
-            // Thêm mới với Invitation_Code mới
+
             await _context.Collaborators.AddAsync(collaborator);
             await _context.SaveChangesAsync();
         }

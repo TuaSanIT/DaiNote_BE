@@ -17,14 +17,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
-// Add DbContext
+
 builder.Services.AddDbContext<AppDbContext>();
 
-//Mail Services
+
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddTransient<IEmailService, EmailService>();
 
-//Cấu hình session
+
 builder.Services.AddDistributedMemoryCache(); // Bộ nhớ cache để lưu session
 builder.Services.AddSession(options =>
 {
@@ -34,7 +34,7 @@ builder.Services.AddSession(options =>
     options.Cookie.SameSite = SameSiteMode.Strict; // Ngăn chặn CSRF
 });
 
-// Add Identity
+
 builder.Services.AddIdentity<UserModel, UserRoleModel>(options =>
 {
     options.SignIn.RequireConfirmedEmail = true;
@@ -50,7 +50,7 @@ builder.Services.AddIdentity<UserModel, UserRoleModel>(options =>
 
 builder.Services.AddSingleton<OnlineUserService>();
 
-// Add Repository
+
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IListRepository, ListRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
@@ -62,7 +62,7 @@ builder.Services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
 builder.Services.AddScoped<IDragAndDropRepository, DragAndDropRepository>();
 builder.Services.AddScoped<ICollaboratorRepository, CollaboratorRepository>();
 
-// Service
+
 builder.Services.AddScoped<AzureBlobService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<ChatService>();
@@ -70,13 +70,13 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddHostedService<VipExpiryCheckerService>();
 builder.Services.AddHostedService<TaskStatusUpdateService>();
 
-// Register AutoMapper
+
 builder.Services.AddAutoMapper(typeof(dai.core.Mapping.AutoMapperProfile));
 
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddControllers();
 
-// Learn more about configuring Swagger/OpenAPI
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -108,7 +108,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// CORS Configuration
+
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 
 builder.Services.AddCors(options =>
@@ -125,7 +125,7 @@ builder.Services.AddCors(options =>
 
 
 
-// Authentication and JWT Configuration
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -156,7 +156,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddHttpClient();
 builder.Services.AddSignalR();
 
-// Authorization Policies
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
@@ -183,7 +183,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline
+
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     app.UseSwagger();

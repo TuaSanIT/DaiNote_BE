@@ -23,8 +23,8 @@ public class POST_Task
     [Required(ErrorMessage = "Status can not be null")]
     public string Status { get; set; }
 
-    //public Guid? AssignTo { get; set; }
+
 
     public bool AvailableCheck { get; set; }
-    //public ICollection<Guid> AssignedUsers { get; set; }
+
 }

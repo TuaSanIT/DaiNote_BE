@@ -64,7 +64,7 @@ namespace dai.dataAccess.Repositories
             }
             catch (Exception ex)
             {
-                // Log the exception (using your preferred logging framework)
+
                 Console.WriteLine($"Error deleting label: {ex.Message}");
                 throw; // Optionally rethrow
             }

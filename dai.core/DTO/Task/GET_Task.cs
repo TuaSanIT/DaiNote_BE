@@ -22,9 +22,9 @@ public class GET_Task
 
     public string Status { get; set; }
 
-    //public string UserEmail { get; set; }
 
-    //public Guid UserEmailId { get; set; }
+
+
 
     public string FileLink { get; set; } //file name
 

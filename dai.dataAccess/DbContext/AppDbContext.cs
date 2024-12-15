@@ -13,29 +13,29 @@ namespace dai.dataAccess.DbContext
         {
             base.OnConfiguring(optionsBuilder);
             optionsBuilder.UseSqlServer("Server=tcp:dainote.database.windows.net,1433;Initial Catalog=DaiNoteDB;Persist Security Info=False;User ID=tuasan;Password=@Gonewinvn2002;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;");
-            //optionsBuilder.UseSqlServer("Server=DESKTOP-3J5AMMQ;Database=DaiNoteDb;uid=sa;pwd=123456789;Trusted_Connection=SSPI;Encrypt=false;TrustServerCertificate=true");
+
         }
         public DbSet<UserModel> userModels { get; set; }
         public DbSet<NoteModel> Notes { get; set; }
         public DbSet<LabelModel> Labels { get; set; }
         public DbSet<NoteLabelModel> NoteLabels { get; set; }
 
-        // Task Management
+
         public DbSet<WorkspaceModel> Workspaces { get; set; }
         public DbSet<BoardModel> Boards { get; set; }
         public DbSet<TaskInListModel> TaskInList { get; set; }
         public DbSet<TaskModel> Tasks { get; set; }
         public DbSet<ListModel> lists { get; set; }
 
-        // Collaborators
+
         public DbSet<CollaboratorModel> Collaborators { get; set; }
         public DbSet<CollaboratorInvitationModel> CollaboratorInvitations { get; set; }
 
-        // Token Management
+
         public DbSet<RevokedToken> RevokedTokens { get; set; }
         public DbSet<TransactionModel> Transactions { get; set; }
 
-        // Chatting
+
         public DbSet<HubConnection> HubConnections { get; set; } = null!;
         public DbSet<Notification> Notifications { get; set; } = null!;
         public DbSet<Chat> Chats { get; set; } = null!;
@@ -47,7 +47,7 @@ namespace dai.dataAccess.DbContext
         {
             base.OnModelCreating(modelBuilder);
 
-            // Rename ASP.NET Identity tables
+
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
                 var tableName = entityType.GetTableName();
@@ -57,22 +57,22 @@ namespace dai.dataAccess.DbContext
                 }
             }
 
-            // Configure Note & Label relationships
+
             ConfigureNoteAndLabel(modelBuilder);
 
-            // Configure Collaborator relationships
+
             ConfigureCollaborators(modelBuilder);
 
-            // Configure TaskInList relationships
+
             ConfigureTaskInList(modelBuilder);
 
-            // Configure Tasks relationships
+
             ConfigureTasks(modelBuilder);
 
-            // Configure Token relationships
+
             ConfigureTokens(modelBuilder);
 
-            // Configure Transaction relationships
+
             ConfigureTransactions(modelBuilder);
         }
 
@@ -170,11 +170,11 @@ namespace dai.dataAccess.DbContext
 
         private void ConfigureTasks(ModelBuilder modelBuilder)
         {
-            //modelBuilder.Entity<TaskModel>()
-            //    .HasOne(t => t.User)
-            //    .WithMany(u => u.Task)
-            //    .HasForeignKey(t => t.AssignTo)
-            //    .OnDelete(DeleteBehavior.SetNull);
+
+
+
+
+
 
             modelBuilder.Entity<TaskModel>()
                 .Property(t => t.FileName)

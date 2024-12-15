@@ -58,7 +58,7 @@ namespace dai.dataAccess.Repositories
 
         public async Task DeleteWorkspaceAsync(Guid workspaceId)
         {
-            // Tải Workspace và tất cả các dữ liệu liên quan
+
             var workspace = await _context.Workspaces
                 .Include(w => w.Board)
                     .ThenInclude(b => b.taskInList)
@@ -75,12 +75,12 @@ namespace dai.dataAccess.Repositories
                 throw new KeyNotFoundException("Workspace not found");
             }
 
-            // Xóa tất cả Collaborators liên kết với Boards
+
             var collaboratorsToRemove = workspace.Board
                 .SelectMany(b => b.Collaborators);
             _context.Collaborators.RemoveRange(collaboratorsToRemove);
 
-            // Xóa tất cả Tasks và Lists liên quan đến Boards
+
             var tasksToRemove = workspace.Board
                 .SelectMany(b => b.taskInList)
                 .Where(tl => tl.Task != null)
@@ -93,17 +93,17 @@ namespace dai.dataAccess.Repositories
                 .Select(tl => tl.List);
             _context.lists.RemoveRange(listsToRemove);
 
-            // Xóa tất cả Boards
+
             _context.Boards.RemoveRange(workspace.Board);
 
-            // Xóa chính Workspace
+
             _context.Workspaces.Remove(workspace);
 
-            // Lưu thay đổi
+
             await _context.SaveChangesAsync();
         }
 
-        // dai.dataAccess.Repositories/WorkspaceRepository.cs
+
         public async Task<IEnumerable<WorkspaceModel>> GetWorkspacesByUserIdAsync(Guid userId)
         {
             return await _context.Workspaces

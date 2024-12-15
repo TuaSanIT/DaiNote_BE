@@ -44,18 +44,18 @@ namespace dai.api.Controllers
         {
             try
             {
-                // Fetch the existing note by id
+
                 var note = await _noteRepository.GetNoteByIdAsync(id);
                 if (note == null)
                     return NotFound("Note not found");
 
-                // Update the bookmark status
+
                 note.Bookmark = noteDto.Bookmark ?? false;
 
-                // Save the updated note to the database
+
                 var updatedNote = await _noteRepository.UpdateNoteAsync(note);  // Ensure you update, not add
 
-                // Map the updated note to GetNoteDTO for response
+
                 var updatedNoteDto = _mapper.Map<GetNoteDTO>(updatedNote);
                 return Ok(updatedNoteDto);
             }
@@ -81,7 +81,7 @@ namespace dai.api.Controllers
                     UserId = userId
                 };
 
-                // Convert Base64 strings to byte arrays with better error handling
+
                 if (noteDto.Images != null && noteDto.Images.Any())
                 {
                     note.Images = new List<byte[]>();
@@ -128,7 +128,7 @@ namespace dai.api.Controllers
                 note.Bookmark = noteDto.Bookmark;
                 note.Edited = DateTime.UtcNow;
 
-                // Handle images
+
                 if (noteDto.Images != null)
                 {
                     if (noteDto.Images.Any())
@@ -154,7 +154,7 @@ namespace dai.api.Controllers
                     }
                     else
                     {
-                        // If the images array is empty, clear the images in the note
+
                         note.Images = new List<byte[]>();
                     }
                 }
@@ -175,7 +175,7 @@ namespace dai.api.Controllers
             return NoContent();
         }
 
-        // Fetch labels for a note
+
         [HttpGet("{noteId}/labels")]
         public async Task<IActionResult> GetLabelsByNoteId(Guid noteId)
         {
@@ -184,7 +184,7 @@ namespace dai.api.Controllers
             return Ok(labelDtos);
         }
 
-        // Add multiple labels to a note
+
         [HttpPost("{noteId}/labels/batch")]
         public async Task<IActionResult> AddLabelsToNote(Guid noteId, [FromBody] List<Guid> labelIds)
         {
@@ -205,7 +205,7 @@ namespace dai.api.Controllers
             return Ok();
         }
 
-        // Remove multiple labels from a note
+
         [HttpDelete("{noteId}/labels/batch")]
         public async Task<IActionResult> RemoveLabelsFromNote(Guid noteId, [FromBody] List<Guid> labelIds)
         {
@@ -224,7 +224,7 @@ namespace dai.api.Controllers
             return NoContent();
         }
 
-        // Fetch notes by label
+
         [HttpGet("notesByLabel/{labelId}")]
         public async Task<IActionResult> GetNotesByLabelId(Guid labelId)
         {

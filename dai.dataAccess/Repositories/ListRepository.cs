@@ -45,7 +45,7 @@ public class ListRepository : IListRepository
                                     .Where(l => l.taskInList.Any(t => t.Board_Id == boardId))
                                     .Include(l => l.taskInList)
                                         .ThenInclude(til => til.Task)
-                                            //.ThenInclude(t => t.User)
+
                                     .OrderBy(l => l.Position) // Order lists by position
                                     .Select(l => new ListModel
                                     {
@@ -80,11 +80,11 @@ public class ListRepository : IListRepository
                                                     AvailableCheck = til.Task.AvailableCheck,
                                                     AssignedTo = til.Task.AssignedTo,
                                                     AssignedToList = til.Task.AssignedToList,
-                                                    //User = til.Task.User == null ? null : new UserModel
-                                                    //{
-                                                    //    Email = til.Task.User.Email,
-                                                    //    Id = til.Task.User.Id,
-                                                    //},
+
+
+
+
+
                                                     
                                                     FileName = til.Task.FileName
                                                 }
@@ -114,7 +114,7 @@ public class ListRepository : IListRepository
         await _context.lists.AddAsync(list);
         await _context.SaveChangesAsync();
 
-        // Add the corresponding TaskInList entry
+
         var taskInList = new TaskInListModel
         {
             List_Id = list.Id,
@@ -128,7 +128,7 @@ public class ListRepository : IListRepository
         await _context.TaskInList.AddAsync(taskInList);
         await _context.SaveChangesAsync();
 
-        // Update NumberOfListInside in the board
+
         board.NumberOfListInside++;
         _context.Boards.Update(board);
         await _context.SaveChangesAsync();
@@ -153,7 +153,7 @@ public class ListRepository : IListRepository
         _context.lists.Update(existingList);
         await _context.SaveChangesAsync();
 
-        // Update TaskInList
+
         if (existingList.taskInList != null)
         {
             foreach (var taskInList in existingList.taskInList)
@@ -175,33 +175,33 @@ public class ListRepository : IListRepository
         {
             var boardId = list.taskInList.FirstOrDefault()?.Board_Id;
 
-            // Delete all task IDs in the list
+
             var taskIds = await _context.TaskInList
                                         .Where(t => t.List_Id == listId)
                                         .Select(t => t.Task_Id)
                                         .ToListAsync();
 
-            // Delete all tasks in the list
+
             var tasks = await _context.Tasks
                                       .Where(t => taskIds.Contains(t.Id))
                                       .ToListAsync();
             _context.Tasks.RemoveRange(tasks);
 
-            // Delete all TaskInList entries related to the list
+
             var taskInListEntries = await _context.TaskInList
                                                   .Where(t => t.List_Id == listId)
                                                   .ToListAsync();
             _context.TaskInList.RemoveRange(taskInListEntries);
             await _context.SaveChangesAsync();
 
-            // Delete the list itself
+
             _context.lists.Remove(list);
 
             await _context.SaveChangesAsync();
 
             if (boardId.HasValue)
             {
-                // Adjust positions of remaining lists
+
                 var listsToUpdate = await _context.lists
                     .Where(l => l.taskInList.Any(til => til.Board_Id == boardId.Value && l.Position > list.Position))
                     .ToListAsync();
@@ -212,7 +212,7 @@ public class ListRepository : IListRepository
                     _context.lists.Update(l);
                 }
 
-                // Update NumberOfListInside in the board
+
                 var board = await _context.Boards.FirstOrDefaultAsync(b => b.Id == boardId.Value);
                 if (board != null)
                 {

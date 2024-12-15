@@ -36,7 +36,7 @@ namespace dai.api.Services.ServiceExtension
                 var formattedNotifications = notifications.Select(n => new Chat
                 {
                     Id = n.Id,
-                    //Username = n.Username,
+
                     Message = n.Message,
                     MessageType = n.MessageType,
                     NotificationDateTime = n.NotificationDateTime,
@@ -56,7 +56,7 @@ namespace dai.api.Services.ServiceExtension
             var currentUser = await _httpContextAccessor.HttpContext.GetUserAsync(_userManager);
             var notification = new Chat
             {
-                //Username = $"{currentUser.FirstName} {currentUser.LastName}",
+
                 Message = model.Message,
                 MessageType = "All",
                 NotificationDateTime = DateTime.Now,

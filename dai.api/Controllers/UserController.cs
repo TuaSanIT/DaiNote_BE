@@ -16,7 +16,7 @@ using Azure.Storage.Blobs;
 using dai.api.Services.ServicesAPI;
 using dai.api.Services.ServiceExtension;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+
 
 namespace dai.api.Controllers;
 
@@ -50,11 +50,11 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetUserById(Guid id)
     {
         var user = await _context.Users
-            //.Include(u => u.Workspace)
-            //.Include(u => u.Collaborator)
-            //.Include(u => u.Note)
-            //.Include(u => u.Label)
-            //.Include(u => u.Task)
+
+
+
+
+
             .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user == null)
@@ -158,7 +158,7 @@ public class UserController : ControllerBase
         {
             try
             {
-                // Xóa ảnh cũ nếu tồn tại
+
                 if (!string.IsNullOrEmpty(existingUser.AvatarImage))
                 {
                     var deleteResult = await _storageService.DeleteFileAsync(existingUser.AvatarImage);
@@ -166,7 +166,7 @@ public class UserController : ControllerBase
                         return BadRequest(new { Message = "Failed to delete old avatar image" });
                 }
 
-                // Upload ảnh mới
+
                 var fileName = $"{Guid.NewGuid()}{Path.GetExtension(userUpdated.AvatarImage.FileName)}";
                 var folderName = "avatars";
                 var containerName = _configuration["AzureBlobStorage:ContainerName"];
@@ -193,7 +193,7 @@ public class UserController : ControllerBase
         if (!updateResult.Succeeded)
             return BadRequest(new { Message = "Failed to update profile", Errors = updateResult.Errors });
 
-        // Trả về URL avatar mới trong response
+
         return Ok(new { Message = "Profile updated successfully", NewAvatarUrl = newAvatarUrl });
     }
 

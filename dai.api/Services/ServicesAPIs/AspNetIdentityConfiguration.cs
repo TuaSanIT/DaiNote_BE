@@ -18,7 +18,7 @@ public static class AspNetIdentityConfiguration
         services
             .AddIdentity<UserModel, UserRoleModel>(setupAction: options =>
             {
-                // Password configuration.
+
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = false;
                 options.Password.RequireNonAlphanumeric = true;
@@ -26,12 +26,12 @@ public static class AspNetIdentityConfiguration
                 options.Password.RequiredLength = 4;
                 options.Password.RequiredUniqueChars = 0;
 
-                // Lockout configuration.
+
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(value: 1);
                 options.Lockout.MaxFailedAccessAttempts = 3;
                 options.Lockout.AllowedForNewUsers = true;
 
-                // User's credentials configuration.
+
                 options.User.AllowedUserNameCharacters = $"{AllowedCharacters}";
                 options.User.RequireUniqueEmail = true;
 

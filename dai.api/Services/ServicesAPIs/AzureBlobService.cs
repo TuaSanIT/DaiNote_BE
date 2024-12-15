@@ -79,14 +79,14 @@ namespace dai.api.Services.ServiceExtension
             }
             catch (Exception ex)
             {
-                // Log the error
+
                 Console.Error.WriteLine($"Failed to delete image: {ex.Message}");
                 return false;
             }
         }
 
 
-        //Upload task file
+
         public async Task<string> UploadTaskFileAsync(Stream fileStream, string containerName, string folderName, string fileName)
         {
             try
@@ -120,7 +120,7 @@ namespace dai.api.Services.ServiceExtension
             }
             catch (Exception ex)
             {
-                // Log the error
+
                 Console.Error.WriteLine($"Failed to delete task file: {ex.Message}");
                 return false;
             }

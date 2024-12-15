@@ -24,13 +24,13 @@ public class TaskModel
 
     public int Position { get; set; }
 
-    //public Guid? AssignTo { get; set; }
-    //public UserModel User { get; set; }
 
-    // Serialized list of User IDs
+
+
+
     public string AssignedTo { get; set; }
 
-    // Helper property for working with the list in code
+
     [NotMapped]
     public List<Guid> AssignedToList
     {

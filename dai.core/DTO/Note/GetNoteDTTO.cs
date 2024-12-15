@@ -20,7 +20,7 @@ namespace dai.core.DTO.Note
         public bool? Archive { get; set; }
         public Guid UserId { get; set; }
 
-        // Use List<byte[]> as per NoteModel
+
         public List<byte[]>? Images { get; set; } = new List<byte[]>();
     }
 }

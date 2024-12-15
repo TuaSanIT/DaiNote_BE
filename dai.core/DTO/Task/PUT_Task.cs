@@ -22,13 +22,13 @@ public class PUT_Task
 
     public string Status { get; set; }
 
-    //public Guid? AssignTo { get; set; }
+
 
     public bool AvailableCheck { get; set; }
 
     public IFormFile? File { get; set; }
 
-    //public ICollection<Guid> AssignedUsers { get; set; }
+
     [BindProperty(BinderType = typeof(JsonModelBinder))]
     public ICollection<Guid> AssignedUsers { get; set; }
 

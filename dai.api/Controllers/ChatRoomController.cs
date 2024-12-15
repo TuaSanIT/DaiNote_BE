@@ -65,7 +65,7 @@ namespace dai.api.Controllers
             }
             catch (Exception ex)
             {
-                // Xử lý lỗi nếu có
+
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -91,7 +91,7 @@ namespace dai.api.Controllers
             return Json(new { success = true, chatRoom });
         }
 
-        // GET: ChatRoom/Details/5
+
         [HttpGet("Details/{id}")]
         public async Task<IActionResult> Details(Guid? id)
         {
@@ -110,7 +110,7 @@ namespace dai.api.Controllers
             return View(chatRoom);
         }
 
-        // POST: ChatRoom/Create
+
         [HttpPost("create")]
         public async Task<IActionResult> Create([Bind("Id,Name")] ChatRoom chatRoom)
         {
@@ -123,7 +123,7 @@ namespace dai.api.Controllers
             return View(chatRoom);
         }
 
-        // GET: ChatRoom/Edit/5
+
         [HttpGet("edit/{id}")]
         public async Task<IActionResult> Edit(Guid? id)
         {
@@ -140,7 +140,7 @@ namespace dai.api.Controllers
             return View(chatRoom);
         }
 
-        // POST: ChatRoom/Edit/5
+
         [HttpPut("edit/{id}")]
         public async Task<IActionResult> Edit(Guid id, [Bind("Id,Name")] ChatRoom chatRoom)
         {
@@ -172,7 +172,7 @@ namespace dai.api.Controllers
             return View(chatRoom);
         }
 
-        // GET: ChatRoom/Delete/5
+
         [HttpGet("delete/{id}")]
         public async Task<IActionResult> Delete(Guid? id)
         {
@@ -191,7 +191,7 @@ namespace dai.api.Controllers
             return View(chatRoom);
         }
 
-        // POST: ChatRoom/Delete/5
+
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {

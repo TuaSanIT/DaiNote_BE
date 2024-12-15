@@ -29,7 +29,7 @@ namespace dai.core.Mapping
 
             CreateMap<NoteLabelModel, NoteLabelDTO>().ReverseMap();
 
-            //Board Mappings
+
             CreateMap<BoardModel, BoardDto>();
             CreateMap<CreateBoardDto, BoardModel>()
                 .ForMember(dest => dest.Create_At, opt => opt.Ignore())
@@ -37,7 +37,7 @@ namespace dai.core.Mapping
             CreateMap<UpdateBoardDto, BoardModel>()
                 .ForMember(dest => dest.Update_At, opt => opt.Ignore());
 
-            // Workspace mappings
+
             CreateMap<CreateWorkspaceDto, WorkspaceModel>()
                 .ForMember(dest => dest.Create_At, opt => opt.Ignore()) 
                 .ForMember(dest => dest.Update_At, opt => opt.Ignore()) 

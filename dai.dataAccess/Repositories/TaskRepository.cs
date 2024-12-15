@@ -24,7 +24,7 @@ public class TaskRepository : ITaskRepository
     {
         return await _context.Tasks
                      .Include(t => t.taskInList)
-                     //.Include(t => t.User) 
+
                      .ToListAsync();
     }
 
@@ -32,33 +32,33 @@ public class TaskRepository : ITaskRepository
     {
         return await _context.Tasks
                      .Include(t => t.taskInList)
-                     //.Include(t => t.User) 
+
                      .FirstOrDefaultAsync(t => t.Id == id);
 
-        //var task = await _context.Tasks
-        //                        .Include(t => t.taskInList)
-        //                        .FirstOrDefaultAsync(t => t.Id == id);
 
-        //if (task == null)
-        //{
-        //    return null;
-        //}
 
-        //var assignedEmails = new Dictionary<Guid, string>();
 
-        //if (!string.IsNullOrEmpty(task.AssignedTo))
-        //{
-        //    var assignedUserIds = task.AssignedToList;
-        //    var assignedUsers = await _context.Users
-        //        .Where(u => assignedUserIds.Contains(u.Id))
-        //        .Select(u => new { u.Id, u.Email })
-        //        .ToListAsync();
 
-        //    // Store the emails in a temporary property for use in the DTO
-        //    assignedEmails = assignedUsers.ToDictionary(u => u.Id, u => u.Email);
-        //}
 
-        //return task;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 
     public async Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId)
@@ -72,9 +72,9 @@ public class TaskRepository : ITaskRepository
             throw new NullReferenceException("List not found");
         }
 
-        //task.Create_At = DateTime.Now;
+
         task.Update_At = DateTime.Now;
-        //task.Position = list.taskInList.Count() + 1;
+
         task.Position = list.taskInList.Count(til => til.Task_Id.HasValue) + 1;
         task.AssignedTo = task.AssignedToList != null
                 ? string.Join(",", task.AssignedToList)
@@ -142,7 +142,7 @@ public class TaskRepository : ITaskRepository
         existingTask.Create_At = task.Create_At;
         existingTask.Update_At = DateTime.Now;
         existingTask.Finish_At = task.Finish_At;
-        //existingTask.AssignTo = task.AssignTo;
+
         existingTask.FileName = task.FileName; 
         existingTask.AvailableCheck = task.AvailableCheck;
         existingTask.AssignedTo = string.Join(",", task.AssignedToList);
@@ -234,7 +234,7 @@ public class TaskRepository : ITaskRepository
 
     public async Task<IEnumerable<object>> GetUserTasksAsync(Guid userId)
     {
-        // Step 1: Fetch all tasks with detailed information
+
         var userTasks = await _context.TaskInList
             .Where(t => t.Task != null) // Ensure task is not null
             .Include(t => t.Board)
@@ -261,7 +261,7 @@ public class TaskRepository : ITaskRepository
             })
             .ToListAsync();
 
-        // Step 2: Apply filtering logic
+
         var filteredTasks = userTasks
             .Where(t =>
                 t.IsBoardOwner &&
@@ -269,7 +269,7 @@ public class TaskRepository : ITaskRepository
             )
             .ToList();
 
-        // Step 3: Return sorted tasks
+
         return filteredTasks.OrderBy(t => t.Finish_At);
     }
 

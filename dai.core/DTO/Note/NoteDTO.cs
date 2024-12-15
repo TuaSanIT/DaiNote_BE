@@ -13,7 +13,7 @@ namespace dai.core.DTO.Note
         public string? Color { get; set; }
         public bool? Bookmark { get; set; }
 
-        // List of image base64 strings (if you're storing them as byte arrays)
+
         public List<string>? Images { get; set; } = new List<string>();
     }
 }

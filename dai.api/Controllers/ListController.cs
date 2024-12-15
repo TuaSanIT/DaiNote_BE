@@ -36,7 +36,7 @@ public class ListController : ControllerBase
         return null;
     }
 
-    // GET: api/List
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<GET_List>>> GetAllLists()
     {
@@ -57,7 +57,7 @@ public class ListController : ControllerBase
     }
 
 
-    // GET: api/List/{id}
+
     [HttpGet("{id}")]
     public async Task<ActionResult<GET_List>> GetListById(Guid id)
     {
@@ -127,8 +127,8 @@ public class ListController : ControllerBase
                         AssignedUsersEmails = t.Task.AssignedToList.ToDictionary(
                             userId => userId,
                             userId => _context.Users.FirstOrDefault(u => u.Id == userId) ? .Email),
-                        //UserEmail = t.Task.User?.Email,
-                        //UserEmailId = t.Task.User?.Id ?? Guid.Empty,
+
+
                         FileLink = t.Task.FileName
                     }).ToList()
             }).ToList() ?? new List<GET_ListAndTask>(); // Trả về danh sách rỗng nếu không có dữ liệu
@@ -142,7 +142,7 @@ public class ListController : ControllerBase
         }
     }
 
-    // POST: api/List
+
     [HttpPost]
     public async Task<ActionResult<POST_List>> PostList(POST_List postList, Guid boardId)
     {
@@ -184,7 +184,7 @@ public class ListController : ControllerBase
         }
     }
 
-    // PUT: api/List/{id}
+
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateList(Guid id, PUT_List postList)
     {
@@ -218,7 +218,7 @@ public class ListController : ControllerBase
         return NoContent();
     }
 
-    //Delete API
+
     [HttpDelete("{listId}")]
     public async Task<IActionResult> DeleteList(Guid listId)
     {
@@ -230,7 +230,7 @@ public class ListController : ControllerBase
         }
         catch (Exception ex)
         {
-            // Log the exception (not shown here for brevity)
+
             Console.WriteLine("mother fucker khong xoa duoc!!! FUCK");
             return StatusCode(500, "Internal server error");
         }
@@ -254,7 +254,7 @@ public class ListController : ControllerBase
             return NotFound("List not found");
         }
 
-        // Update the order of the lists
+
         await _dragAndDropRepository.UpdateListOrder(listToMove, targetList);
         Console.WriteLine("change list order");
 

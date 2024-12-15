@@ -54,7 +54,7 @@ namespace dai.api.Services.ServicesAPI
 
         public async Task SendInvitationEmailAsync(string toEmail, Guid boardId, string invitationCode, Guid senderUserId)
         {
-            // Lấy thông tin Board dựa vào Board_Id
+
             var board = await _collaboratorRepository.GetBoardByIdAsync(boardId);
             if (board == null)
             {
@@ -63,7 +63,7 @@ namespace dai.api.Services.ServicesAPI
 
             var boardName = board.Name;
 
-            // Lấy thông tin người gửi từ database
+
             var senderUser = await _userRepository.GetUserByIdAsync(senderUserId);
             if (senderUser == null)
             {
@@ -72,7 +72,7 @@ namespace dai.api.Services.ServicesAPI
 
             var senderName = senderUser.UserName;
 
-            // Tạo email
+
             var email = new MimeMessage();
             email.Sender = new MailboxAddress(senderName, emailSettings.Email);
             email.To.Add(MailboxAddress.Parse(toEmail));
@@ -159,7 +159,7 @@ namespace dai.api.Services.ServicesAPI
 
             email.Body = builder.ToMessageBody();
 
-            // Gửi email
+
             using var smtp = new SmtpClient();
             smtp.Connect(emailSettings.Host, emailSettings.Port, SecureSocketOptions.StartTls);
             smtp.Authenticate(emailSettings.Email, emailSettings.Password);

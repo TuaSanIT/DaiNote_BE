@@ -34,7 +34,7 @@ namespace dai.api.Controllers
             return null;
         }
 
-        // GET: api/workspace/{id}
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetWorkspace(Guid id)
         {
@@ -50,7 +50,7 @@ namespace dai.api.Controllers
                 return NotFound(new { message = "Workspace not found." });
             }
 
-            // Xác minh quyền sở hữu
+
             if (workspace.UserId != userId)
             {
                 return StatusCode(403, new { message = "You do not have permission to access this workspace." });
@@ -106,7 +106,7 @@ namespace dai.api.Controllers
         }
 
 
-        // PUT: api/workspace/{id}
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateWorkspace(Guid id, [FromBody] UpdateWorkspaceDto updateWorkspaceDto)
         {
@@ -122,7 +122,7 @@ namespace dai.api.Controllers
                 return NotFound(new { message = "Workspace not found." });
             }
 
-            // Xác minh quyền sở hữu
+
             if (workspace.UserId != userId)
             {
                 return StatusCode(403, new { message = "You do not have permission to access this workspace." });
@@ -135,7 +135,7 @@ namespace dai.api.Controllers
             return NoContent();
         }
 
-        // DELETE: api/workspace/{id}
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteWorkspace(Guid id)
         {
@@ -151,7 +151,7 @@ namespace dai.api.Controllers
                 return NotFound(new { message = "Workspace not found." });
             }
 
-            // Xác minh quyền sở hữu
+
             if (workspace.UserId != userId)
             {
                 return StatusCode(403, new { message = "You do not have permission to access this workspace." });
@@ -162,7 +162,7 @@ namespace dai.api.Controllers
         }
 
 
-        // GET: api/workspace/user/{userId}
+
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetWorkspacesByUserId(Guid userId)
         {

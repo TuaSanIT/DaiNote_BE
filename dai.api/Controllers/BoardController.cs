@@ -38,7 +38,7 @@ namespace dai.api.Controllers
             var board = await _boardRepository.GetBoardByIdAsync(boardId);
             if (board == null) return (false, false, false);
 
-            // Kiểm tra quyền sở hữu workspace
+
             var workspaceOwner = await _context.Workspaces
                 .Where(w => w.Id == board.WorkspaceId)
                 .Select(w => w.UserId)
@@ -46,7 +46,7 @@ namespace dai.api.Controllers
 
             bool isOwner = workspaceOwner == userId;
 
-            // Kiểm tra quyền Editor (collaborator)
+
             bool isEditor = await _context.Collaborators
                 .AnyAsync(c => c.Board_Id == boardId && c.User_Id == userId && c.Permission == "Editor");
 
@@ -60,7 +60,7 @@ namespace dai.api.Controllers
             {
                 var boards = await _boardRepository.GetAllBoardsAsync();
 
-                // Map the boards to DTOs
+
                 var boardDtos = _mapper.Map<IEnumerable<BoardDto>>(boards);
 
                 return Ok(boardDtos);
@@ -71,7 +71,7 @@ namespace dai.api.Controllers
             }
         }
 
-        // GET: api/Board/{boardId}
+
         [HttpGet("{boardId}")]
         public async Task<ActionResult<BoardDto>> GetBoardById(Guid boardId)
         {
@@ -95,7 +95,7 @@ namespace dai.api.Controllers
             });
         }
 
-        // POST: api/board/{workspaceId}
+
         [HttpPost("{workspaceId}")]
         public async Task<ActionResult<BoardDto>> PostBoard(Guid workspaceId, [FromBody] CreateBoardDto createBoardDto)
         {
@@ -145,7 +145,7 @@ namespace dai.api.Controllers
             }
         }
 
-        // PUT: api/Board/{boardId}
+
         [HttpPut("{boardId}")]
         public async Task<ActionResult> PutBoard(Guid boardId, [FromBody] UpdateBoardDto updateBoardDto)
         {
@@ -175,7 +175,7 @@ namespace dai.api.Controllers
             }
         }
 
-        // DELETE: api/Board/{boardId}
+
         [HttpDelete("{boardId}")]
         public async Task<IActionResult> DeleteBoard(Guid boardId)
         {
@@ -198,7 +198,7 @@ namespace dai.api.Controllers
             }
         }
 
-        // GET: api/Board/{boardId}/workspace
+
         [HttpGet("{boardId}/workspace")]
         public async Task<ActionResult<Guid>> GetWorkspaceIdByBoardId(Guid boardId)
         {
@@ -211,7 +211,7 @@ namespace dai.api.Controllers
             return Ok(workspaceId);
         }
 
-        // GET: api/Board/{boardId}/collaborators
+
         [HttpGet("{boardId}/collaborators")]
         public async Task<IActionResult> GetCollaborators(Guid boardId)
         {
@@ -219,15 +219,15 @@ namespace dai.api.Controllers
             if (currentUserId == null)
                 return Unauthorized(new { message = "User not logged in." });
 
-            // Lấy thông tin Board và Workspace
+
             var board = await _context.Boards.Include(b => b.Workspace).FirstOrDefaultAsync(b => b.Id == boardId);
             if (board == null)
                 return NotFound(new { message = "Board not found." });
 
-            // Kiểm tra nếu người dùng hiện tại là Owner của Workspace
+
             var isOwner = board.Workspace.UserId == currentUserId;
 
-            // Lấy danh sách Collaborators
+
             var collaborators = await _context.Collaborators
                 .Include(c => c.User)
                 .Where(c => c.Board_Id == boardId)
@@ -241,7 +241,7 @@ namespace dai.api.Controllers
                 })
                 .ToListAsync();
 
-            // Thêm Owner vào danh sách nếu là Owner
+
             if (isOwner)
             {
                 collaborators.Add(new
@@ -292,16 +292,16 @@ namespace dai.api.Controllers
             if (currentUserId == null)
                 return Unauthorized(new { message = "User not logged in." });
 
-            // Lấy thông tin Board và Workspace
+
             var board = await _context.Boards.Include(b => b.Workspace).FirstOrDefaultAsync(b => b.Id == boardId);
             if (board == null)
                 return NotFound(new { message = "Board not found." });
 
-            // Kiểm tra quyền Owner
+
             if (board.Workspace.UserId != currentUserId)
                 return StatusCode(403, new { message = "Only the Owner can remove collaborators." });
 
-            // Xóa Collaborator
+
             var collaborator = await _context.Collaborators
                 .FirstOrDefaultAsync(c => c.Board_Id == boardId && c.User_Id == userId);
 

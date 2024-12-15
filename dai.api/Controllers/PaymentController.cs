@@ -53,7 +53,7 @@ namespace dai.api.Controllers
 
             var orderCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"));
 
-            // Lưu thông tin giao dịch vào database
+
             var transaction = new TransactionModel
             {
                 UserId = user.Id,
@@ -66,7 +66,7 @@ namespace dai.api.Controllers
             await _context.Transactions.AddAsync(transaction);
             await _context.SaveChangesAsync();
 
-            // Tạo liên kết thanh toán
+
             var request = _httpContextAccessor.HttpContext.Request;
             var baseUrl = $"{request.Scheme}://{request.Host}";
 
@@ -115,12 +115,12 @@ namespace dai.api.Controllers
                         return Redirect(_config["PayOS:ErrorUrl"]);
                     }
 
-                    // Cập nhật transaction
+
                     transaction.Status = "PAID";
                     transaction.PaidAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
 
-                    // Cập nhật user
+
                     user.IsVipSupplier = true;
                     user.VipExpiryDate = DateTime.UtcNow.AddMonths(1);
                     await _context.SaveChangesAsync();

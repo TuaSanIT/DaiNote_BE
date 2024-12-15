@@ -21,7 +21,7 @@ namespace dai.api.Services.ServiceExtension
                     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                     var now = DateTime.UtcNow;
 
-                    // Lấy danh sách người dùng hết hạn VIPF
+
                     var expiredUsers = await context.Users
                             .Where(u => u.IsVipSupplier == true && u.VipExpiryDate <= now)
                             .ToListAsync();

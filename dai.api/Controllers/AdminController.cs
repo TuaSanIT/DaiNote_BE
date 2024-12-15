@@ -15,7 +15,7 @@ namespace dai.api.Controllers
             _context = context;
         }
 
-        // Get User Statistics
+
         [HttpGet("user-statistics")]
         public async Task<IActionResult> GetUserStatistics()
         {
@@ -31,7 +31,7 @@ namespace dai.api.Controllers
             });
         }
 
-        // Get All Users
+
         [HttpGet("get-all-users")]
         public async Task<IActionResult> GetAllUsers()
         {
@@ -58,7 +58,7 @@ namespace dai.api.Controllers
             });
         }
 
-        // Get All Notes
+
         [HttpGet("get-all-notes")]
         public async Task<IActionResult> GetAllNotes()
         {
@@ -81,7 +81,7 @@ namespace dai.api.Controllers
             });
         }
 
-        // Get All Tasks
+
         [HttpGet("get-all-tasks")]
         public async Task<IActionResult> GetAllTasks()
         {
@@ -97,7 +97,7 @@ namespace dai.api.Controllers
                 t.AvailableCheck,
                 t.FileName,
                 t.Position,
-                //AssignedTo = t.AssignTo
+
             }).ToListAsync();
 
             return Ok(new
@@ -112,25 +112,25 @@ namespace dai.api.Controllers
         {
             var now = DateTime.UtcNow;
 
-            // Xác định khoảng thời gian của tháng hiện tại
+
             var currentMonthStart = new DateTime(now.Year, now.Month, 1);
             var currentMonthEnd = currentMonthStart.AddMonths(1).AddSeconds(-1);
 
-            // Xác định khoảng thời gian của tháng trước
+
             var previousMonthStart = currentMonthStart.AddMonths(-1);
             var previousMonthEnd = currentMonthStart.AddSeconds(-1);
 
-            // Đếm số lượng task được tạo trong tháng hiện tại
+
             var currentMonthTaskCount = await _context.Tasks
                 .Where(t => t.Create_At >= currentMonthStart && t.Create_At <= currentMonthEnd)
                 .CountAsync();
 
-            // Đếm số lượng task được tạo trong tháng trước
+
             var previousMonthTaskCount = await _context.Tasks
                 .Where(t => t.Create_At >= previousMonthStart && t.Create_At <= previousMonthEnd)
                 .CountAsync();
 
-            // Tính tỷ lệ tăng trưởng (%)
+
             double growthPercentage = 0;
             if (previousMonthTaskCount > 0)
             {
@@ -154,25 +154,25 @@ namespace dai.api.Controllers
         {
             var now = DateTime.UtcNow;
 
-            // Xác định khoảng thời gian của tháng hiện tại
+
             var currentMonthStart = new DateTime(now.Year, now.Month, 1);
             var currentMonthEnd = currentMonthStart.AddMonths(1).AddSeconds(-1);
 
-            // Xác định khoảng thời gian của tháng trước
+
             var previousMonthStart = currentMonthStart.AddMonths(-1);
             var previousMonthEnd = currentMonthStart.AddSeconds(-1);
 
-            // Đếm số lượng note được tạo trong tháng hiện tại
+
             var currentMonthNoteCount = await _context.Notes
                 .Where(n => n.Created >= currentMonthStart && n.Created <= currentMonthEnd)
                 .CountAsync();
 
-            // Đếm số lượng note được tạo trong tháng trước
+
             var previousMonthNoteCount = await _context.Notes
                 .Where(n => n.Created >= previousMonthStart && n.Created <= previousMonthEnd)
                 .CountAsync();
 
-            // Tính tỷ lệ tăng trưởng (%)
+
             double growthPercentage = 0;
             if (previousMonthNoteCount > 0)
             {
@@ -206,10 +206,10 @@ namespace dai.api.Controllers
                 t.UserId,
             }).ToListAsync();
 
-            // Lọc các giao dịch có trạng thái PAID
+
             var paidTransactions = transactions.Where(t => t.Status == "PAID").ToList();
 
-            // Tính tổng số tiền từ các giao dịch PAID
+
             var totalPaidAmount = paidTransactions.Sum(t => t.Amount);
 
             return Ok(new
@@ -269,25 +269,25 @@ namespace dai.api.Controllers
         {
             var now = DateTime.UtcNow;
 
-            // Xác định khoảng thời gian của tháng hiện tại
+
             var currentMonthStart = new DateTime(now.Year, now.Month, 1);
             var currentMonthEnd = currentMonthStart.AddMonths(1).AddSeconds(-1);
 
-            // Xác định khoảng thời gian của tháng trước
+
             var previousMonthStart = currentMonthStart.AddMonths(-1);
             var previousMonthEnd = currentMonthStart.AddSeconds(-1);
 
-            // Tính tổng Earnings cho tháng hiện tại
+
             var currentMonthEarnings = await _context.Transactions
                 .Where(t => t.Status == "PAID" && t.PaidAt >= currentMonthStart && t.PaidAt <= currentMonthEnd)
                 .SumAsync(t => t.Amount);
 
-            // Tính tổng Earnings cho tháng trước
+
             var previousMonthEarnings = await _context.Transactions
                 .Where(t => t.Status == "PAID" && t.PaidAt >= previousMonthStart && t.PaidAt <= previousMonthEnd)
                 .SumAsync(t => t.Amount);
 
-            // Tính tỷ lệ tăng trưởng (%)
+
             double growthPercentage = 0;
             if (previousMonthEarnings > 0)
             {

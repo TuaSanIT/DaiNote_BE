@@ -59,14 +59,14 @@ namespace dai.api.Controllers
         {
             try
             {
-                // Tìm thông tin người dùng theo userId
+
                 var user = await _userManager.FindByIdAsync(userId.ToString());
                 if (user == null)
                 {
                     return NotFound(new { message = "User not found." });
                 }
 
-                // Tạo token mới cho người dùng
+
                 var token = GenerateToken(user);
 
                 return Ok(new { message = "Token generated successfully.", token });
@@ -88,7 +88,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
         return Unauthorized(new { message = "User not logged in." });
     }
 
-    // Determine the resource type and validate ownership
+
     switch (resourceType.ToLower())
     {
         case "workspace":
@@ -110,11 +110,11 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 return NotFound(new { message = "Board not found." });
             }
 
-            // Check if the user is the owner of the workspace associated with the board
+
             var workspaceOwner = await _dbContext.Workspaces
                 .AnyAsync(w => w.Id == board.WorkspaceId && w.UserId == userId);
 
-            // Check if the user is a collaborator with editor permission
+
             var isEditor = await _dbContext.Collaborators
                 .AnyAsync(c => c.Board_Id == resourceId && c.User_Id == userId && c.Permission == "Editor");
 
@@ -186,7 +186,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 return BadRequest("Invalid OTP provided.");
             }
 
-            // Xóa OTP sau khi xác thực thành công
+
             _otpStorage.Remove(email);
             return Ok("OTP verified successfully. Please provide your registration details.");
         }
@@ -242,7 +242,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
 
         private async Task<string> GetIpAddress()
         {
-            // Attempt to get IP address from HttpContext
+
             var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
 
             if (!string.IsNullOrEmpty(remoteIp) && remoteIp != "::1")
@@ -300,23 +300,23 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             if (!await _userManager.IsEmailConfirmedAsync(user))
                 return BadRequest("You need to confirm your email before logging in.");
 
-            // Lấy vai trò của người dùng
+
             var roles = await _userManager.GetRolesAsync(user);
             var primaryRole = roles.FirstOrDefault() ?? "User";
 
-            // Lấy địa chỉ IP của người dùng
+
             string ipAddress = await GetIpAddress();
 
-            // Kiểm tra nếu địa chỉ IP là mới
+
             bool isNewIp = await IsNewLoginIpAsync(user.Id, ipAddress);
 
             if (isNewIp)
             {
-                // Lấy thông tin vị trí từ địa chỉ IP
+
                 var location = await GetLocationFromIp(ipAddress);
                 _logger.LogInformation($"Location from IP ({ipAddress}): {location}");
 
-                // Gửi email thông báo
+
                 string loginTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 SendLoginNotificationEmail(user.Email, loginTime, location);
                 await SaveUserIpAsync(user.Id, ipAddress);
@@ -329,7 +329,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             string refreshToken = GenerateRefreshToken();
             await SaveRefreshTokenAsync(user.Id.ToString(), refreshToken);
 
-            // Lưu JWT vào session
+
             HttpContext.Session.SetString("JwtToken", accessToken);
             HttpContext.Session.SetString("UserId", user.Id.ToString());
 
@@ -402,6 +402,82 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             smtp.Send(emailMessage);
             smtp.Disconnect(true);
         }
+        [HttpGet("validate-token")]
+        public IActionResult ValidateToken(
+    [FromHeader(Name = "Authorization")] string authorization,
+    [FromHeader(Name = "UserId")] string userIdHeader)
+        {
+
+            if (!string.IsNullOrEmpty(userIdHeader) && Guid.TryParse(userIdHeader, out var userIdGuid))
+            {
+
+                if (IsValidUserId(userIdGuid))
+                {
+                    return Ok(new { isValid = true, userId = userIdGuid });
+                }
+                else
+                {
+                    return Unauthorized(new { isValid = false, message = "Invalid userId." });
+                }
+            }
+
+
+            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
+            {
+                return Unauthorized(new { isValid = false, message = "Token missing or invalid." });
+            }
+
+
+            var token = authorization.Substring("Bearer ".Length).Trim();
+
+            try
+            {
+
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]))
+                };
+
+
+                var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+
+
+                var jwtToken = validatedToken as JwtSecurityToken;
+                var tokenUserId = jwtToken?.Claims.FirstOrDefault(c => c.Type == "userId")?.Value;
+
+                if (Guid.TryParse(tokenUserId, out var tokenUserIdGuid))
+                {
+
+                    return Ok(new { isValid = true, userId = tokenUserIdGuid });
+                }
+                else
+                {
+
+                    return Unauthorized(new { isValid = false, message = "Token does not contain a valid userId." });
+                }
+            }
+            catch (SecurityTokenException)
+            {
+
+                return Unauthorized(new { isValid = false, message = "Token is invalid or expired." });
+            }
+        }
+
+        private bool IsValidUserId(Guid userId)
+        {
+            var validUserIds = new List<Guid>
+    {
+        Guid.Parse("some-valid-guid-1"),
+        Guid.Parse("some-valid-guid-2")
+    };
+
+            return validUserIds.Contains(userId);
+        }
 
         private string GenerateToken(UserModel? user)
         {
@@ -460,7 +536,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             return new Random().Next(100000, 999999).ToString();
         }
 
-        //Login with Google
+
         [HttpPost("login-google")]
         public async Task<IActionResult> LoginWithGoogle([FromBody] GoogleLoginRequest request)
         {
@@ -469,7 +545,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
 
             try
             {
-                // Xác thực ID Token của Google
+
                 var payload = await ValidateGoogleTokenAsync(request.IdToken);
                 if (payload == null)
                     return BadRequest("Invalid Google token.");
@@ -477,7 +553,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 var email = payload.Email;
                 var user = await _userManager.FindByEmailAsync(email);
 
-                // Nếu người dùng chưa tồn tại, tạo mới
+
                 if (user == null)
                 {
                     user = new UserModel
@@ -498,26 +574,26 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                     }
                 }
 
-                // Sử dụng IP từ request (nếu có), nếu không lấy từ HttpContext
+
                 var ipAddress = !string.IsNullOrEmpty(request.ClientIp)
                     ? request.ClientIp
                     : HttpContext.Connection.RemoteIpAddress?.ToString();
 
-                // Kiểm tra nếu địa chỉ IP là mới
+
                 if (await IsNewLoginIpAsync(user.Id, ipAddress))
                 {
-                    // Gửi thông báo email khi đăng nhập từ IP mới
+
                     var location = await GetLocationFromIp(ipAddress);
                     SendLoginNotificationEmail(user.Email, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), location);
 
-                    // Lưu lại địa chỉ IP mới
+
                     await SaveUserIpAsync(user.Id, ipAddress);
                 }
 
-                // Tạo JWT token
+
                 var token = GenerateToken(user);
 
-                // Lưu JWT vào session
+
                 HttpContext.Session.SetString("JwtToken", token);
                 HttpContext.Session.SetString("UserId", user.Id.ToString());
 
@@ -539,7 +615,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             {
                 var settings = new GoogleJsonWebSignature.ValidationSettings
                 {
-                    //Clock = Google.Apis.Util.SystemClock.Default,
+
                     Clock = GoogleLoginHelper.GetClock(),
                     Audience = new[] { _configuration["Google:ClientId"] } // Google Client ID từ cấu hình
                 };
@@ -552,7 +628,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             }
         }
 
-        // Forget Password - Gửi OTP
+
         [HttpPost("forgot-password/{email}")]
         public async Task<IActionResult> ForgotPassword(string email)
         {
@@ -581,7 +657,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             }
         }
 
-        // Xác thực OTP cho quên mật khẩu
+
         [HttpPost("verify-otp-for-password/{email}/{otp}")]
         public IActionResult VerifyOtpForPassword(string email, string otp)
         {
@@ -599,7 +675,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             return Ok(new { message = "OTP verified successfully. You can now reset your password." });
         }
 
-        // Đặt lại mật khẩu
+
         [HttpPost("reset-password/{email}")]
         public async Task<IActionResult> ResetPassword(string email, [FromBody] PasswordResetModel model)
         {
@@ -619,7 +695,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 return BadRequest("User not found.");
             }
 
-            // Thay đổi mật khẩu
+
             try
             {
                 var removePasswordResult = await _userManager.RemovePasswordAsync(user);
@@ -652,7 +728,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             string smtpHost = _configuration["Smtp:Host"];
             int smtpPort = int.Parse(_configuration["Smtp:Port"]);
 
-            // Soạn nội dung email
+
             StringBuilder emailMessage = new StringBuilder();
             emailMessage.AppendLine("<html>");
             emailMessage.AppendLine("<body>");
@@ -673,7 +749,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             emailToSend.Subject = "Password Reset OTP - DAI";
             emailToSend.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = message };
 
-            // Gửi email qua SMTP
+
             using var smtp = new SmtpClient();
             await smtp.ConnectAsync(smtpHost, smtpPort, MailKit.Security.SecureSocketOptions.StartTls);
             await smtp.AuthenticateAsync(smtpEmail, smtpPassword);
@@ -684,20 +760,20 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
         [HttpPost("logout")]
         public async Task<IActionResult> Logout(Guid userId)
         {
-            // Tìm user dựa trên userId
+
             var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
-            // Nếu user không tồn tại, trả về lỗi
+
             if (user == null)
             {
                 return NotFound(new { message = "User not found." });
             }
 
-            // Xóa session và cập nhật trạng thái IsOnline
+
             HttpContext.Session.Clear(); // Xóa toàn bộ session
             user.IsOnline = false;
 
-            // Lưu thay đổi vào database
+
             await _dbContext.SaveChangesAsync();
 
             return Ok(new { message = "Logout successful." });

@@ -21,7 +21,7 @@ public class UserModel : IdentityUser<Guid>
     public string? Role { get; set; } 
     public bool IsBanned { get; set; } = false; 
 
-    // Quan hệ với các model khác
+
     public ICollection<WorkspaceModel> Workspace { get; set; } = new List<WorkspaceModel>();
     public ICollection<CollaboratorModel> Collaborator { get; set; } = new List<CollaboratorModel>();
     public ICollection<NoteModel> Note { get; set; } = new List<NoteModel>();

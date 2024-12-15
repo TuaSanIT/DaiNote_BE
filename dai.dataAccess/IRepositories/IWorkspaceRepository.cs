@@ -17,7 +17,7 @@ namespace dai.dataAccess.IRepositories
 
         Task<IEnumerable<WorkspaceModel>> GetWorkspacesByUserIdAsync(Guid userId);
 
-        // Kiểm tra quyền sở hữu
+
         Task<bool> IsUserOwnerOfWorkspaceAsync(Guid userId, Guid workspaceId);
     }
 

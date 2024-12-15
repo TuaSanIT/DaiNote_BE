@@ -31,7 +31,7 @@ namespace dai.api.Hubs
                }) // Chỉ chọn phần nội dung của tin nhắn
                .ToListAsync();
 
-            // Gửi mỗi tin nhắn riêng tới tất cả client đang kết nối
+
             foreach (var message in chatPrivateList)
             {
                 await Clients.All.SendAsync("ReceivePrivateMessage", message);
@@ -117,10 +117,10 @@ namespace dai.api.Hubs
 
         private async Task UpdateConnectedUsersList()
         {
-            // Tạo một Dictionary mới để lưu trữ thông tin người dùng duy nhất dựa trên userId
+
             Dictionary<Guid, UserInformation> uniqueUsers = new Dictionary<Guid, UserInformation>();
 
-            // Lặp qua danh sách connected users và thêm vào uniqueUsers chỉ nếu chưa có người dùng có cùng userId
+
             foreach (var userInfo in ConnectedUsers.Values)
             {
                 if (!uniqueUsers.ContainsKey(userInfo.Id))
@@ -129,10 +129,10 @@ namespace dai.api.Hubs
                 }
             }
 
-            // Chuyển danh sách các người dùng duy nhất thành List
+
             List<UserInformation> uniqueUsersList = uniqueUsers.Values.ToList();
 
-            // Gửi danh sách người dùng duy nhất tới tất cả các client
+
             await Clients.All.SendAsync("UpdateUsersList", uniqueUsersList);
         }
 
@@ -164,7 +164,7 @@ namespace dai.api.Hubs
         {
             Dictionary<Guid, UserInformation> uniqueUsers = new Dictionary<Guid, UserInformation>();
 
-            // Lặp qua danh sách connected users và thêm vào uniqueUsers chỉ nếu chưa có người dùng có cùng userId
+
             foreach (var userInfo in ConnectedUsers.Values)
             {
                 if (!uniqueUsers.ContainsKey(userInfo.Id))
@@ -173,7 +173,7 @@ namespace dai.api.Hubs
                 }
             }
 
-            // Chuyển danh sách các người dùng duy nhất thành List
+
             List<UserInformation> uniqueUsersList = uniqueUsers.Values.ToList();
 
             await Clients.All.SendAsync("UpdateUsersOnlineList", uniqueUsersList);

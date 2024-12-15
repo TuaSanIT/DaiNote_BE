@@ -29,7 +29,7 @@ namespace dai.api.Controllers
             _emailService = emailService;
         }
 
-        // Lấy user id từ JWT token
+
         private Guid UserIdFromToken()
         {
             var userIdClaim = User.FindFirst("sub")?.Value;
@@ -71,7 +71,7 @@ namespace dai.api.Controllers
 
                         if (existingCollaborator != null)
                         {
-                            // Cho phép gửi lại nếu trạng thái là "Pending"
+
                             if (existingCollaborator.Permission != "Pending")
                             {
                                 alreadyCollaborators.Add(email);
@@ -129,7 +129,7 @@ namespace dai.api.Controllers
                     Permission = "Pending"
                 };
 
-                // Cập nhật collaborator nếu đã tồn tại với trạng thái "Pending"
+
                 await _collaboratorRepository.AddOrUpdateCollaboratorAsync(collaborator);
             }
 
@@ -157,14 +157,14 @@ namespace dai.api.Controllers
                 return BadRequest(new { Message = "Email and BoardId are required." });
             }
 
-            // Kiểm tra email có tồn tại trong hệ thống không
+
             var user = await _userRepository.GetUserByEmailAsync(checkDTO.Email);
             if (user == null)
             {
                 return NotFound(new { Message = "User not found in the system." });
             }
 
-            // Kiểm tra xem user có phải là Collaborator của Board
+
             var collaborator = await _collaboratorRepository.GetCollaboratorByBoardIdAndUserIdAsync(checkDTO.BoardId, user.Id);
             if (collaborator != null)
             {
@@ -215,7 +215,7 @@ namespace dai.api.Controllers
                 return Unauthorized("You are not authorized to check this invitation.");
             }
 
-            // Kiểm tra nếu người dùng đã là cộng tác viên
+
             var collaborator = await _collaboratorRepository.GetCollaboratorByInvitationCodeAndUserIdAsync(invitationCode, userId);
             if (collaborator != null && collaborator.Permission != "Pending")
             {
@@ -310,7 +310,7 @@ namespace dai.api.Controllers
             });
         }
 
-        //Nghia
+
         [HttpGet("{boardId}")]
         public async Task<IActionResult> GetCollaboratorsByBoardId(Guid boardId)
         {

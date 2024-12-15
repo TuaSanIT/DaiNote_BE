@@ -36,7 +36,7 @@ namespace dai.api.Controllers
             {
                 var currentUser = await _userManager.GetUserAsync(User);
                 string emailUserCurr = User.Identity.Name ?? "DefaultEmail@example.com";
-                // Lấy tất cả tin nhắn riêng tư giữa hai người dùng với các điều kiện là senderUserId và receiverUserId
+
                 var privateMessages = await _context.ChatPrivate
                     .Where(c => (c.SenderUserId == senderUserId && c.ReceiverUserId == receiverUserId) ||
                                 (c.SenderUserId == receiverUserId && c.ReceiverUserId == senderUserId))
@@ -89,7 +89,7 @@ namespace dai.api.Controllers
                         NotificationDateTime = DateTime.Now,
                     };
 
-                    // Kiểm tra xem người nhận có tồn tại không
+
                     var receiverUser = await _userManager.FindByIdAsync(model.ReceiverUserId.ToString());
                     if (receiverUser == null)
                     {
@@ -107,10 +107,10 @@ namespace dai.api.Controllers
                             }
                         }
                     }
-                    // Lưu tin nhắn riêng tư vào cơ sở dữ liệu
+
                     _context.ChatPrivate.Add(privateChat);
                     await _context.SaveChangesAsync();
-                    // Gửi tin nhắn riêng tư đến người nhận thông qua SignalR
+
                     await hubContext.Clients.All.SendAsync("ReceiveChatPrivateRealtime", privateChat);
 
                     return Json(new { success = true, privateChat });
