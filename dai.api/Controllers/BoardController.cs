@@ -322,13 +322,15 @@ namespace dai.api.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("File is not provided or empty.");
 
-            var board = await _context.Boards.FindAsync(boardId);
+            var board = await _context.Boards
+                .Include(b => b.taskInList)
+                    .ThenInclude(t => t.Task)
+                .Include(b => b.taskInList)
+                    .ThenInclude(t => t.List)
+                .FirstOrDefaultAsync(b => b.Id == boardId);
+
             if (board == null)
                 return NotFound("Board not found.");
-
-            var existingTasks = await _context.TaskInList.AnyAsync(t => t.Board_Id == boardId);
-            if (existingTasks)
-                return BadRequest("This board already contains data. Import operation is not allowed.");
 
             try
             {
@@ -343,34 +345,44 @@ namespace dai.api.Controllers
                 var rows = worksheet.Dimension.Rows;
                 var columns = worksheet.Dimension.Columns;
 
-                bool isDetailed = columns == 7; 
+                bool isDetailed = columns == 7;
 
                 if (!isDetailed)
                     return BadRequest("Unsupported Excel template. Please upload a valid file.");
 
+                var existingLists = board.taskInList.Select(t => t.List).Distinct().ToList();
                 var lists = new List<ListModel>();
                 var tasks = new List<TaskInListModel>();
                 ListModel currentList = null;
 
-                for (int row = 2; row <= rows; row++) // Skip header
+                for (int row = 2; row <= rows; row++)
                 {
                     var listTitle = worksheet.Cells[row, 1].Text.Trim();
                     var listStatus = isDetailed ? worksheet.Cells[row, 2].Text.Trim() : "Active";
 
                     if (!string.IsNullOrWhiteSpace(listTitle))
                     {
-                        currentList = new ListModel
+                        currentList = existingLists.FirstOrDefault(l => l.Title == listTitle);
+
+                        if (currentList == null)
                         {
-                            Id = Guid.NewGuid(),
-                            Title = listTitle,
-                            Create_At = DateTime.UtcNow,
-                            Update_At = DateTime.UtcNow,
-                            Status = listStatus,
-                            Position = lists.Count + 1,
-                            NumberOfTaskInside = 0
-                        };
-                        lists.Add(currentList);
-                        board.NumberOfListInside++;
+                            currentList = new ListModel
+                            {
+                                Id = Guid.NewGuid(),
+                                Title = listTitle,
+                                Create_At = DateTime.UtcNow,
+                                Update_At = DateTime.UtcNow,
+                                Status = listStatus,
+                                Position = board.NumberOfListInside + 1,
+                                NumberOfTaskInside = 0
+                            };
+                            lists.Add(currentList);
+                            board.NumberOfListInside++;
+                        }
+                        else
+                        {
+                            currentList.Update_At = DateTime.UtcNow;
+                        }
                     }
 
                     if (currentList == null)
@@ -407,7 +419,7 @@ namespace dai.api.Controllers
                                 Finish_At = DateTime.TryParse(taskFinishAt, out var parsedFinishAt) ? parsedFinishAt : DateTime.UtcNow.AddDays(7),
                                 Status = taskStatus,
                                 Position = currentList.NumberOfTaskInside + 1,
-                                AssignedToList = assignedToList 
+                                AssignedToList = assignedToList
                             }
                         };
                         tasks.Add(task);
@@ -417,7 +429,6 @@ namespace dai.api.Controllers
 
                 _context.lists.AddRange(lists);
                 _context.TaskInList.AddRange(tasks);
-
                 _context.Boards.Update(board);
 
                 await _context.SaveChangesAsync();
@@ -428,8 +439,6 @@ namespace dai.api.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
-
-
     }
 
 
