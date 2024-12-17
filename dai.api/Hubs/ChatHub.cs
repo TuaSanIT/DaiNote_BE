@@ -14,28 +14,13 @@ namespace dai.api.Hubs
     {
         private readonly AppDbContext _context;
         private readonly UserService _userService;
+        private readonly AzureBlobService _storageService;
 
-        public ChatHub(AppDbContext context, UserService userService)
+        public ChatHub(AppDbContext context, UserService userService, AzureBlobService storageService)
         {
             _context = context;
             _userService = userService;
-        }
-
-        public async Task SendPrivateMessage()
-        {
-            var chatPrivateList = await _context.Chats
-               .Select(x => new
-               {
-                   Message = x.Message,
-                   ImageChatRoom = x.ImageChatRoom
-               }) // Chỉ chọn phần nội dung của tin nhắn
-               .ToListAsync();
-
-
-            foreach (var message in chatPrivateList)
-            {
-                await Clients.All.SendAsync("ReceivePrivateMessage", message);
-            }
+            _storageService = storageService;
         }
         public async Task SendMessage(Message msg)
         {
@@ -202,6 +187,68 @@ namespace dai.api.Hubs
                     Avatar = null
                 };
             }
+        }
+
+        public async Task SendGroupMessage(IFormFile file, string message, Guid chatRoomId)
+        {
+            string fileUrl = null;
+
+            if (file != null)
+            {
+                fileUrl = await UploadFileToAzureBlob(file, "chat-files");
+            }
+
+            var chat = new Chat
+            {
+                ChatRoomDataId = chatRoomId,
+                Message = message ?? "File sent",
+                MessageType = file != null ? "file" : "text",
+                ImageChatRoom = fileUrl,
+                NotificationDateTime = DateTime.UtcNow
+            };
+
+            _context.Chats.Add(chat);
+            await _context.SaveChangesAsync();
+
+            await Clients.Group(chatRoomId.ToString()).SendAsync("ReceiveGroupMessage", chat);
+        }
+
+        public async Task SendPrivateMessage(IFormFile file, string message, Guid receiverUserId)
+        {
+            string fileUrl = null;
+
+            if (file != null)
+            {
+                fileUrl = await UploadFileToAzureBlob(file, "private-chat");
+            }
+
+            var senderUser = await _context.userModels
+    .FirstOrDefaultAsync(u => u.Email == Context.User.Identity.Name);
+
+            if (senderUser == null)
+            {
+                throw new InvalidOperationException("Unable to find the authenticated user.");
+            }
+
+            var chatPrivate = new ChatPrivate
+            {
+                SenderUserId = senderUser.Id, 
+                ReceiverUserId = receiverUserId, 
+                Message = message ?? "File sent",
+                ImageChat = fileUrl,
+                NotificationDateTime = DateTime.UtcNow
+            };
+
+            _context.ChatPrivate.Add(chatPrivate);
+            await _context.SaveChangesAsync();
+
+            await Clients.User(receiverUserId.ToString()).SendAsync("ReceivePrivateMessage", chatPrivate);
+        }
+        private async Task<string> UploadFileToAzureBlob(IFormFile file, string folder)
+        {
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            using var fileStream = file.OpenReadStream();
+            return await _storageService.UploadFileAsync(fileStream, "dainotecontainer", folder, fileName, file.ContentType);
         }
 
     }

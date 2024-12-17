@@ -37,7 +37,20 @@ public class TaskController : ControllerBase
         _context = context;
     }
 
+    private Guid? ExtractUserIdFromAuthorization(string authorizationHeader)
+    {
+        if (string.IsNullOrWhiteSpace(authorizationHeader) || !authorizationHeader.StartsWith("Bearer "))
+            return null;
 
+        var userIdStr = authorizationHeader.Substring("Bearer ".Length).Trim();
+        if (Guid.TryParse(userIdStr, out var userId))
+            return userId;
+
+        return null;
+    }
+
+
+    // GET: api/Task
     [HttpGet]
     public async Task<ActionResult<IEnumerable<GET_Task>>> GetAllTasks()
     {
@@ -54,13 +67,13 @@ public class TaskController : ControllerBase
             Status = t.Status,
             Position = t.Position,
             AvailableCheck = t.AvailableCheck,
-
+            //UserEmail = t.User?.Email
         }).ToList();
 
         return Ok(taskDtos);
     }
 
-
+    // POST: api/Task
     [HttpPost]
     public async Task<ActionResult<POST_Task>> PostTask([FromBody] POST_Task postTask, Guid listId)
     {
@@ -68,6 +81,15 @@ public class TaskController : ControllerBase
         {
             return BadRequest(ModelState);
         }
+
+        var userIdHeader = Request.Headers["Authorization"].ToString();
+        var userId = ExtractUserIdFromAuthorization(userIdHeader);
+
+        if (userId == null)
+        {
+            return Unauthorized(new { message = "User not logged in." });
+        }
+
         var task = new TaskModel
         {
             Id = Guid.NewGuid(),
@@ -77,14 +99,14 @@ public class TaskController : ControllerBase
             Finish_At = postTask.Finish_At,
             Description = postTask.Description,
             Status = postTask.Status,
-
-
+            //AssignTo = postTask.AssignTo,
+            //AssignedToList = postTask.AssignedUsers.ToList(),
             AvailableCheck = postTask.AvailableCheck,
         };
 
         try
         {
-            var createdTask = await _taskRepository.AddTaskAsync(task, listId);
+            var createdTask = await _taskRepository.AddTaskAsync(task, listId, userId.Value);
 
             var taskDTO = new GET_Task
             {
@@ -93,7 +115,7 @@ public class TaskController : ControllerBase
                 Create_At = createdTask.Create_At,
                 Update_At = createdTask.Update_At,
                 Finish_At = createdTask.Finish_At,
-
+                //UserEmail = createdTask.User?.Email,
                 Status = createdTask.Status
             };
 
@@ -105,7 +127,52 @@ public class TaskController : ControllerBase
         }
     }
 
+    //// POST: api/Task
+    //[HttpPost]
+    //public async Task<ActionResult<POST_Task>> PostTask([FromBody] POST_Task postTask, Guid listId)
+    //{
+    //    if (!ModelState.IsValid)
+    //    {
+    //        return BadRequest(ModelState);
+    //    }
+    //    var task = new TaskModel
+    //    {
+    //        Id = Guid.NewGuid(),
+    //        Title = postTask.Title,
+    //        Create_At = postTask.Create_At,
+    //        Update_At = DateTime.Now,
+    //        Finish_At = postTask.Finish_At,
+    //        Description = postTask.Description,
+    //        Status = postTask.Status,
+    //        //AssignTo = postTask.AssignTo,
+    //        //AssignedToList = postTask.AssignedUsers.ToList(),
+    //        AvailableCheck = postTask.AvailableCheck,
+    //    };
 
+    //    try
+    //    {
+    //        var createdTask = await _taskRepository.AddTaskAsync(task, listId);
+
+    //        var taskDTO = new GET_Task
+    //        {
+    //            Id = createdTask.Id,
+    //            Title = createdTask.Title,
+    //            Create_At = createdTask.Create_At,
+    //            Update_At = createdTask.Update_At,
+    //            Finish_At = createdTask.Finish_At,
+    //            //UserEmail = createdTask.User?.Email,
+    //            Status = createdTask.Status
+    //        };
+
+    //        return CreatedAtAction(nameof(GetTaskById), new { id = taskDTO.Id }, taskDTO);
+    //    }
+    //    catch (DbUpdateException ex)
+    //    {
+    //        return StatusCode(500, "An error occurred while saving the list. Please try again.");
+    //    }
+    //}
+
+    // GET: api/Task/{id}
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<GET_Task>> GetTaskById(Guid id)
     {
@@ -137,10 +204,10 @@ public class TaskController : ControllerBase
             Status = task.Status,
             Position = task.Position,
             AvailableCheck = task.AvailableCheck,
-
-
+            //UserEmail = task.User?.Email, // Include the User's email
+            //UserEmailId = task.User?.Id ?? Guid.Empty,
             AssignedUsers = task.AssignedToList,
-            AssignedUsersEmails = assignedUsersEmails, 
+            AssignedUsersEmails = assignedUsersEmails,
             FileLink = task.FileName
         };
         return Ok(taskDto);
@@ -151,7 +218,7 @@ public class TaskController : ControllerBase
     {
         try
         {
-
+            // Call the repository method to get task details
             var taskDetails = await _taskRepository.GetTaskDetailsAsync(taskId);
 
             if (taskDetails.WorkspaceName == null && taskDetails.BoardName == null && taskDetails.ListName == null)
@@ -159,7 +226,7 @@ public class TaskController : ControllerBase
                 return NotFound(new { Message = "Task details not found or incomplete" });
             }
 
-
+            // Return the task details as a response
             return Ok(new
             {
                 WorkspaceName = taskDetails.WorkspaceName,
@@ -174,7 +241,7 @@ public class TaskController : ControllerBase
     }
 
 
-
+    // PUT: api/Task/{id}
     [HttpPut("{id}")]
     public async Task<ActionResult<TaskModel>> UpdateTask(Guid id, [FromForm] PUT_Task updatedTask)
     {
@@ -184,26 +251,26 @@ public class TaskController : ControllerBase
             return NotFound();
         }
 
-
-
+        // Check if assigned user has changed
+        //var previousAssigneeId = existingTask.AssignTo;
         var previousAssignedUsers = existingTask.AssignedToList ?? new List<Guid>();
 
-
+        // Update task properties
         existingTask.Title = updatedTask.Title;
         existingTask.Description = updatedTask.Description;
         existingTask.Status = updatedTask.Status;
-        existingTask.Create_At = updatedTask.Create_At; 
+        existingTask.Create_At = updatedTask.Create_At;
         existingTask.Finish_At = updatedTask.Finish_At;
         existingTask.AvailableCheck = updatedTask.AvailableCheck;
+        //existingTask.AssignTo = updatedTask.AssignTo;
 
-
-
+        // Handle file upload logic
         string newTaskFileUrl = null;
         if (updatedTask.File != null)
         {
             try
             {
-
+                // Delete old file if it exists
                 if (!string.IsNullOrEmpty(existingTask.FileName))
                 {
                     var deleteResult = await _storageService.DeleteTaskFileAsync(existingTask.FileName);
@@ -211,7 +278,7 @@ public class TaskController : ControllerBase
                         return BadRequest(new { Message = "Failed to delete old task file" });
                 }
 
-
+                // Upload new file
                 var fileName = Path.GetFileName(updatedTask.File.FileName);
                 var folderName = "task-files";
                 var containerName = _configuration["AzureBlobStorage:ContainerName"];
@@ -237,7 +304,7 @@ public class TaskController : ControllerBase
 
         await _taskRepository.UpdateTaskAsync(existingTask);
 
-
+        // Send email notifications to newly assigned users
         var newlyAssignedUsers = updatedTask.AssignedUsers.Except(previousAssignedUsers).ToList();
         foreach (var userId in newlyAssignedUsers)
         {
@@ -337,7 +404,7 @@ public class TaskController : ControllerBase
                                                                 <li><strong>Deadline:</strong> {existingTask.Finish_At.ToString("f")}</li>
                                                             </ul>
                                                             <p>Please check your task dashboard for more details.</p>
-                                                            <a href='https://dainote.netlify.app/board-list/{taskDetails.BoardId}' class='button'>View Task Board</a>
+                                                            <a href='http://localhost:8080/board-list/{taskDetails.BoardId}' class='button'>View Task Board</a>
                                                             <p>Best regards,<br><strong>DAI Team</strong></p>
                                                         </div>
                                                         <div class='footer'>
@@ -360,136 +427,10 @@ public class TaskController : ControllerBase
         }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         return NoContent();
     }
 
-
+    // DELETE: api/Task/{id}
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteTask(Guid id)
     {
@@ -503,7 +444,7 @@ public class TaskController : ControllerBase
         return NoContent();
     }
 
-
+    // GET: api/Task/user/{userId}
     [HttpGet("user/{userId:guid}")]
     public async Task<ActionResult<IEnumerable<TaskModel>>> GetUserTasks(Guid userId)
     {

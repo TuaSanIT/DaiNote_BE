@@ -125,7 +125,26 @@ namespace dai.api.Services.ServiceExtension
                 return false;
             }
         }
+        public async Task<string> UploadFileAsync(Stream fileStream, string containerName, string folderName, string fileName, string contentType)
+        {
+            try
+            {
+                var blobServiceClient = new BlobServiceClient(azureConnectionstring);
+                var blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
 
+                await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+                var blobClient = blobContainerClient.GetBlobClient($"{folderName}/{fileName}");
+
+                await blobClient.UploadAsync(fileStream, new BlobHttpHeaders { ContentType = contentType });
+
+                return blobClient.Uri.ToString();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while uploading the file to Azure Blob Storage", ex);
+            }
+        }
 
     }
 }

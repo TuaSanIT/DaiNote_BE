@@ -16,5 +16,5 @@ public interface IListRepository
     Task DeleteListAsync(Guid id);
 
     Task<IEnumerable<ListModel>> GetListsByBoardIdAsync(Guid boardId);
-    Task<IEnumerable<ListModel>> GetListsAndTasksByBoardIdAsync(Guid boardId);
+    Task<IEnumerable<ListModel>> GetListsAndTasksByBoardIdAsync(Guid boardId, Guid userId, bool isOwner);
 }

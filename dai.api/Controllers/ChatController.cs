@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace dai.api.Controllers
 {
@@ -28,88 +29,80 @@ namespace dai.api.Controllers
             _userManager = userManager;
             _storageService = storageService;
         }
-        [HttpGet("messages")]
-        public async Task<IActionResult> GetMessages()
+        [HttpGet("messages/{chatRoomId}")]
+        public async Task<IActionResult> GetMessages(Guid chatRoomId)
         {
-            try
-            {
-                var listChatData = await dbContext.Chats.ToListAsync();
-                var currentUser = await _userManager.GetUserAsync(User);
-                string emailUserCurr = User.Identity.Name ?? "DefaultEmail@example.com";
-                var chatDataWithUsers = await dbContext.Chats
-                  .Include(c => c.Id)
-                  .OrderBy(c => c.NotificationDateTime)
-                  .ToListAsync();
-
-                var formattedNotifications = chatDataWithUsers.Select(n => new
+            var messages = await dbContext.Chats
+                .Where(c => c.ChatRoomDataId == chatRoomId)
+                .OrderBy(c => c.NotificationDateTime)
+                .Select(c => new
                 {
-                    n.ChatId,
-                    n.UserId,
-                    n.Message,
-                    n.MessageType,
-                    n.ImageChatRoom,
-                    NotificationDateTime = n.NotificationDateTime.ToString("HH:mm dd/MM/yyyy"),
-                    User = n.Id,
-                    Email = n.Id.Email,
-                    AvatarChat = n.Id.AvatarImage,
-                    FullnameChat = n.Id.FullName,
-                    UserNameCurrent = emailUserCurr,
-                    ChatRoom = n.ChatRoomDataId,
-                });
+                    c.ChatId,
+                    c.UserId,
+                    c.Message,
+                    c.MessageType,
+                    c.ImageChatRoom,
+                    NotificationDateTime = c.NotificationDateTime.ToString("HH:mm dd/MM/yyyy"),
+                    Avatar = c.Avatar,
+                })
+                .ToListAsync();
 
-
-                return Ok(formattedNotifications);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            return Ok(messages);
         }
         [HttpPost("send")]
-        public async Task<IActionResult> SendMessages(ChatViewModel model, IFormFile file)
+        public async Task<IActionResult> SendMessage([FromForm] ChatViewModel model, IFormFile file)
         {
             var user = await _userManager.GetUserAsync(User);
-            if (user != null)
+            if (user == null)
+                return Unauthorized("User not authenticated.");
+
+            var chatMessage = new Chat
             {
-                if (ModelState.IsValid || file == null)
+                UserId = user.Id,
+                Message = model.Message ?? string.Empty,
+                MessageType = file != null ? (IsImageFile(file) ? "image" : "file") : "text",
+                NotificationDateTime = DateTime.UtcNow,
+                Avatar = user.AvatarImage ?? "https://default-avatar.example.com/avatar.png",
+                ChatRoomDataId = model.ChatRoomId
+            };
+
+            if (file != null)
+            {
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                var folderName = IsImageFile(file) ? "chat-images" : "chat-files";
+
+                using (var fileStream = file.OpenReadStream())
                 {
-                    if (!string.IsNullOrEmpty(model.Message) && file == null ||
-                        string.IsNullOrEmpty(model.Message) && file != null ||
-                        !string.IsNullOrEmpty(model.Message) && file != null)
-                    {
-                        var notification = new Chat
-                        {
-                            UserId = user.Id,
-                            Message = !string.IsNullOrEmpty(model.Message) ? model.Message : "",
-                            MessageType = "All",
-                            NotificationDateTime = DateTime.Now,
-                            Avatar = !string.IsNullOrEmpty(user.AvatarImage) ? user.AvatarImage : "https://i.pinimg.com/736x/0d/64/98/0d64989794b1a4c9d89bff571d3d5842.jpg",
-                            ChatRoomDataId = model.ChatRoomId,
-                        };
+                    var fileUrl = await _storageService.UploadFileAsync(
+                        fileStream, "dainotecontainer", folderName, fileName, file.ContentType);
 
-                        if (file != null)
-                        {
-                            var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-                            using (var fileStream = file.OpenReadStream())
-                            {
-                                var imagePath = await _storageService.UploadImageAsync(fileStream, "dainotecontainer", "chat-images", fileName);
-                                if (imagePath != null)
-                                {
-                                    notification.ImageChatRoom = imagePath;
-                                }
-                            }
-                        }
-
-                        dbContext.Chats.Add(notification);
-                        await dbContext.SaveChangesAsync();
-                        await hubContext.Clients.All.SendAsync("ReceiveNotificationRealtime", notification);
-
-                        return Json(new { success = true, notification });
-                    }
+                    chatMessage.ImageChatRoom = fileUrl; // Set the uploaded file/image URL
                 }
             }
-            return Json(new { success = false, errors = ModelState.Values.SelectMany(v => v.Errors) });
+
+            dbContext.Chats.Add(chatMessage);
+            await dbContext.SaveChangesAsync();
+
+            await hubContext.Clients.Group(model.ChatRoomId.ToString())
+                .SendAsync("ReceiveMessage", new
+                {
+                    chatMessage.UserId,
+                    chatMessage.Message,
+                    chatMessage.MessageType,
+                    chatMessage.ImageChatRoom,
+                    chatMessage.NotificationDateTime,
+                    chatMessage.Avatar
+                });
+
+            return Ok(new { success = true, chatMessage });
         }
 
+        private bool IsImageFile(IFormFile file)
+        {
+            var supportedTypes = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
+            return supportedTypes.Contains(Path.GetExtension(file.FileName).ToLower());
+        }
+
+        
     }
 }

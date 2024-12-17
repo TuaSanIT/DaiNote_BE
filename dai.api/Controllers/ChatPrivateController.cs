@@ -34,9 +34,6 @@ namespace dai.api.Controllers
         {
             try
             {
-                var currentUser = await _userManager.GetUserAsync(User);
-                string emailUserCurr = User.Identity.Name ?? "DefaultEmail@example.com";
-
                 var privateMessages = await _context.ChatPrivate
                     .Where(c => (c.SenderUserId == senderUserId && c.ReceiverUserId == receiverUserId) ||
                                 (c.SenderUserId == receiverUserId && c.ReceiverUserId == senderUserId))
@@ -49,7 +46,6 @@ namespace dai.api.Controllers
                         c.Message,
                         c.ImageChat,
                         NotificationDateTime = c.NotificationDateTime.ToString("HH:mm dd/MM/yyyy"),
-                        UserNameCurrent = emailUserCurr,
                         SenderUser = new
                         {
                             c.SenderUser.Email,
@@ -72,52 +68,103 @@ namespace dai.api.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
-
-        [HttpPost("send")]
-        public async Task<IActionResult> SendPrivateMessage(ChatPrivateViewModel model, IFormFile file)
+        [HttpPost("start")]
+        public async Task<IActionResult> StartPrivateChat([FromBody] StartPrivateChatRequest model)
         {
-            var senderUser = await _userManager.GetUserAsync(User);
-            if (ModelState.IsValid || file == null)
+            // Validate sender and receiver
+            var senderUser = await _context.Users.FindAsync(model.SenderUserId);
+            var receiverUser = await _context.Users.FindAsync(model.ReceiverUserId);
+
+            if (senderUser == null || receiverUser == null)
             {
-                if (!string.IsNullOrEmpty(model.Message) && file == null || string.IsNullOrEmpty(model.Message) && file != null || !string.IsNullOrEmpty(model.Message) && file != null)
-                {
-                    var privateChat = new ChatPrivate
-                    {
-                        SenderUserId = senderUser.Id,
-                        ReceiverUserId = model.ReceiverUserId, // model.ReceiverUserId là ID của người nhận
-                        Message = !string.IsNullOrEmpty(model.Message) ? model.Message : "",
-                        NotificationDateTime = DateTime.Now,
-                    };
-
-
-                    var receiverUser = await _userManager.FindByIdAsync(model.ReceiverUserId.ToString());
-                    if (receiverUser == null)
-                    {
-                        return Json(new { success = false, message = "Người nhận không tồn tại." });
-                    }
-                    if (file != null)
-                    {
-                        var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-                        using (var fileStream = file.OpenReadStream())
-                        {
-                            var imagePath = await _storageService.UploadImageAsync(fileStream, "dainotecontainer", "private-chat", fileName);
-                            if (imagePath != null)
-                            {
-                                privateChat.ImageChat = imagePath;
-                            }
-                        }
-                    }
-
-                    _context.ChatPrivate.Add(privateChat);
-                    await _context.SaveChangesAsync();
-
-                    await hubContext.Clients.All.SendAsync("ReceiveChatPrivateRealtime", privateChat);
-
-                    return Json(new { success = true, privateChat });
-                }
+                return NotFound(new { success = false, message = "Sender or Receiver user not found." });
             }
-            return Json(new { success = false, errors = ModelState.Values.SelectMany(v => v.Errors) });
+
+            // Check if a private chat already exists
+            var existingChat = await _context.ChatPrivate
+                .FirstOrDefaultAsync(c =>
+                    (c.SenderUserId == model.SenderUserId && c.ReceiverUserId == model.ReceiverUserId) ||
+                    (c.SenderUserId == model.ReceiverUserId && c.ReceiverUserId == model.SenderUserId));
+
+            if (existingChat != null)
+            {
+                return Ok(new { success = true, chatPrivateId = existingChat.ChatPrivateId });
+            }
+
+            // Create new private chat
+            var newChat = new ChatPrivate
+            {
+                SenderUserId = model.SenderUserId,
+                ReceiverUserId = model.ReceiverUserId,
+                NotificationDateTime = DateTime.UtcNow,
+                Message = "Private chat started" // Default message or log
+            };
+
+            _context.ChatPrivate.Add(newChat);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, chatPrivateId = newChat.ChatPrivateId });
         }
 
+        // Send private message with optional file upload
+        [HttpPost("send")]
+        public async Task<IActionResult> SendPrivateMessage([FromForm] ChatPrivateViewModel model, IFormFile file)
+        {
+            var senderUser = await _userManager.GetUserAsync(User);
+
+            // Validate sender
+            if (senderUser == null)
+            {
+                return Unauthorized(new { success = false, message = "User not authenticated." });
+            }
+
+            // Validate receiver
+            var receiverUser = await _userManager.FindByIdAsync(model.ReceiverUserId.ToString());
+            if (receiverUser == null)
+            {
+                return NotFound(new { success = false, message = "Receiver user does not exist." });
+            }
+
+            // Build private message
+            var privateChat = new ChatPrivate
+            {
+                SenderUserId = senderUser.Id,
+                ReceiverUserId = model.ReceiverUserId,
+                Message = model.Message ?? string.Empty,
+                NotificationDateTime = DateTime.UtcNow
+            };
+
+            // Handle file upload
+            if (file != null)
+            {
+                try
+                {
+                    var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                    using (var fileStream = file.OpenReadStream())
+                    {
+                        var fileUrl = await _storageService.UploadImageAsync(fileStream, "dainotecontainer", "private-chat", fileName);
+                        privateChat.ImageChat = fileUrl;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, $"File upload failed: {ex.Message}");
+                }
+            }
+
+            // Save message to database
+            _context.ChatPrivate.Add(privateChat);
+            await _context.SaveChangesAsync();
+
+            // Send message to the receiver via SignalR
+            await hubContext.Clients.User(model.ReceiverUserId.ToString()).SendAsync("ReceivePrivateMessage", privateChat);
+
+            return Ok(new { success = true, privateChat });
+        }
+        public class StartPrivateChatRequest
+        {
+            public Guid SenderUserId { get; set; }
+            public Guid ReceiverUserId { get; set; }
+        }
     }
 }

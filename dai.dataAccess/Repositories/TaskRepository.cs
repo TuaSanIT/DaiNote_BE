@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace dai.dataAccess.Repositories;  
+namespace dai.dataAccess.Repositories;
 
 public class TaskRepository : ITaskRepository
 {
@@ -24,7 +24,7 @@ public class TaskRepository : ITaskRepository
     {
         return await _context.Tasks
                      .Include(t => t.taskInList)
-
+                     //.Include(t => t.User) 
                      .ToListAsync();
     }
 
@@ -32,36 +32,71 @@ public class TaskRepository : ITaskRepository
     {
         return await _context.Tasks
                      .Include(t => t.taskInList)
-
+                     //.Include(t => t.User) 
                      .FirstOrDefaultAsync(t => t.Id == id);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     }
 
-    public async Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId)
+    //public async Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId, Guid userId)
+    //{
+    //    var list = await _context.lists
+    //                             .Include(l => l.taskInList)
+    //                             .FirstOrDefaultAsync(l => l.Id == listId);
+
+    //    if (list == null)
+    //    {
+    //        throw new NullReferenceException("List not found");
+    //    }
+
+    //    // Retrieve the board ID associated with this list
+    //    var boardId = list.taskInList.FirstOrDefault()?.Board_Id ?? Guid.Empty;
+
+    //    // Determine if the user is the owner or collaborator
+    //    var board = await _context.Boards.Include(b => b.Workspace)
+    //                                     .FirstOrDefaultAsync(b => b.Id == boardId);
+
+    //    if (board == null)
+    //    {
+    //        throw new NullReferenceException("Board not found");
+    //    }
+
+    //    string permission = board.Workspace.UserId == userId ? "owner" : "collaborator";
+
+    //    //task.Create_At = DateTime.Now;
+    //    task.Update_At = DateTime.Now;
+    //    //task.Position = list.taskInList.Count() + 1;
+    //    task.Position = list.taskInList.Count(til => til.Task_Id.HasValue) + 1;
+    //    task.AssignedTo = task.AssignedToList != null
+    //            ? string.Join(",", task.AssignedToList)
+    //            : string.Empty;
+
+    //    await _context.Tasks.AddAsync(task);
+    //    await _context.SaveChangesAsync();
+
+    //    // Add the TaskInList relationship with appropriate permission
+    //    var newTaskInList = new TaskInListModel
+    //    {
+    //        Board_Id = boardId,
+    //        Task_Id = task.Id,
+    //        List_Id = listId,
+    //        Create_At = DateTime.Now,
+    //        Update_At = DateTime.Now,
+    //        Permission = userId.ToString() // Set permission based on user role
+    //    };
+
+    //    _context.TaskInList.Add(newTaskInList);
+    //    await _context.SaveChangesAsync();
+
+    //    // Update the task count in the list
+    //    list.NumberOfTaskInside++;
+    //    _context.lists.Update(list);
+    //    await _context.SaveChangesAsync();
+
+    //    return task;
+    //}
+
+
+    public async Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId, Guid userId)
     {
         var list = await _context.lists
                          .Include(l => l.taskInList)
@@ -72,9 +107,18 @@ public class TaskRepository : ITaskRepository
             throw new NullReferenceException("List not found");
         }
 
+        // Retrieve the board ID associated with this list
+        var boardId = list.taskInList.FirstOrDefault()?.Board_Id ?? Guid.Empty;
 
+        // Determine if the user is the owner or collaborator
+        var board = await _context.Boards.Include(b => b.Workspace)
+                                         .FirstOrDefaultAsync(b => b.Id == boardId);
+
+        string permission = board.Workspace.UserId == userId ? "owner" : "collaborator";
+
+        //task.Create_At = DateTime.Now;
         task.Update_At = DateTime.Now;
-
+        //task.Position = list.taskInList.Count() + 1;
         task.Position = list.taskInList.Count(til => til.Task_Id.HasValue) + 1;
         task.AssignedTo = task.AssignedToList != null
                 ? string.Join(",", task.AssignedToList)
@@ -97,7 +141,7 @@ public class TaskRepository : ITaskRepository
             var existingListInTaskInList = await _context.TaskInList
                 .FirstOrDefaultAsync(til => til.List_Id == listId);
 
-            Guid boardId = Guid.Empty;
+            //Guid boardId = Guid.Empty;
             if (existingListInTaskInList != null)
             {
                 boardId = existingListInTaskInList.Board_Id;
@@ -110,7 +154,7 @@ public class TaskRepository : ITaskRepository
                 List_Id = listId,
                 Create_At = DateTime.Now,
                 Update_At = DateTime.Now,
-                Permission = "default" 
+                Permission = userId.ToString()
             };
 
             _context.TaskInList.Add(newTaskInList);
@@ -142,8 +186,8 @@ public class TaskRepository : ITaskRepository
         existingTask.Create_At = task.Create_At;
         existingTask.Update_At = DateTime.Now;
         existingTask.Finish_At = task.Finish_At;
-
-        existingTask.FileName = task.FileName; 
+        //existingTask.AssignTo = task.AssignTo;
+        existingTask.FileName = task.FileName;
         existingTask.AvailableCheck = task.AvailableCheck;
         existingTask.AssignedTo = string.Join(",", task.AssignedToList);
 
@@ -182,7 +226,7 @@ public class TaskRepository : ITaskRepository
         _context.Tasks.Remove(task);
         _context.TaskInList.Remove(taskInListEntry);
 
-        await _context.SaveChangesAsync(); 
+        await _context.SaveChangesAsync();
 
         if (listId.HasValue)
         {
@@ -203,11 +247,11 @@ public class TaskRepository : ITaskRepository
                 {
                     Id = Guid.NewGuid(),
                     List_Id = listId.Value,
-                    Task_Id = null, 
-                    Board_Id = taskInListEntry.Board_Id, 
+                    Task_Id = null,
+                    Board_Id = taskInListEntry.Board_Id,
                     Create_At = DateTime.UtcNow,
                     Update_At = DateTime.UtcNow,
-                    Permission = "default" 
+                    Permission = "default"
                 };
 
                 await _context.TaskInList.AddAsync(placeholderTaskInList);
@@ -234,7 +278,7 @@ public class TaskRepository : ITaskRepository
 
     public async Task<IEnumerable<object>> GetUserTasksAsync(Guid userId)
     {
-
+        // Step 1: Fetch all tasks with detailed information
         var userTasks = await _context.TaskInList
             .Where(t => t.Task != null) // Ensure task is not null
             .Include(t => t.Board)
@@ -257,19 +301,19 @@ public class TaskRepository : ITaskRepository
                 HasCollaborators = t.Board.Collaborators.Any(),
                 Collaborators = t.Board.Collaborators.Select(c => c.User_Id).ToList(),
                 IsCollaborator = t.Board.Collaborators.Any(c => c.User_Id == userId),
-                IsBoardOwner = t.Board.Workspace.UserId == userId 
+                IsBoardOwner = t.Board.Workspace.UserId == userId
             })
             .ToListAsync();
 
-
+        // Step 2: Apply filtering logic
         var filteredTasks = userTasks
             .Where(t =>
                 t.IsBoardOwner &&
-                (!t.HasCollaborators) ||   (t.HasCollaborators && t.AssignedUsers.Contains(userId))
+                (!t.HasCollaborators) || (t.HasCollaborators && t.AssignedUsers.Contains(userId))
             )
             .ToList();
 
-
+        // Step 3: Return sorted tasks
         return filteredTasks.OrderBy(t => t.Finish_At);
     }
 
@@ -279,7 +323,7 @@ public class TaskRepository : ITaskRepository
         var currentYear = DateTime.Now.Year;
 
         var tasks = await _context.Tasks
-            .Where(t => 
+            .Where(t =>
                 t.taskInList.Any(til => til.Board_Id == boardId) && t.Create_At.Month == currentMonth && t.Create_At.Year == currentYear)
             .ToListAsync();
 
@@ -292,7 +336,7 @@ public class TaskRepository : ITaskRepository
         var currentYear = DateTime.Now.Year;
 
         var tasks = await _context.Tasks
-            .Where(t => t.Status == status && 
+            .Where(t => t.Status == status &&
                 t.taskInList.Any(til => til.Board_Id == boardId) && t.Update_At.Month == currentMonth && t.Update_At.Year == currentYear)
             .ToListAsync();
 
@@ -317,7 +361,7 @@ public class TaskRepository : ITaskRepository
             WorkspaceName: taskInList.Board.Workspace.Name,
             BoardName: taskInList.Board.Name,
             ListName: taskInList.List.Title,
-            BoardId : taskInList.Board.Id
+            BoardId: taskInList.Board.Id
         );
     }
 

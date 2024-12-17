@@ -18,56 +18,76 @@ namespace dai.api.Services.ServiceExtension
         private readonly AppDbContext _dbContext;
         private readonly UserManager<UserModel> _userManager;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        public ChatService(AppDbContext dbContext, IHubContext<ChatHub> hubContext, UserManager<UserModel> userManager, IHttpContextAccessor httpContextAccessor)
+        private readonly AzureBlobService _blobService;
+
+        public ChatService(AppDbContext dbContext, IHubContext<ChatHub> hubContext, UserManager<UserModel> userManager, IHttpContextAccessor httpContextAccessor, AzureBlobService blobService)
         {
             _dbContext = dbContext;
             _hubContext = hubContext;
             _userManager = userManager;
             _httpContextAccessor = httpContextAccessor;
+            _blobService = blobService;
         }
-
-
-        public async Task<List<Chat>> GetMessagesAsync()
+        public async Task<List<Chat>> GetMessagesAsync(Guid chatRoomId)
         {
-            try
-            {
-                var notifications = await _dbContext.Chats.ToListAsync();
+            var messages = await _dbContext.Chats
+                .Where(m => m.ChatRoomDataId == chatRoomId)
+                .OrderBy(m => m.NotificationDateTime)
+                .ToListAsync();
 
-                var formattedNotifications = notifications.Select(n => new Chat
-                {
-                    Id = n.Id,
-
-                    Message = n.Message,
-                    MessageType = n.MessageType,
-                    NotificationDateTime = n.NotificationDateTime,
-                    Avatar = n.Avatar
-                }).ToList();
-
-                return formattedNotifications;
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            return messages;
         }
-
-        public async Task SendMessage(ChatViewModel model)
+        public async Task<Chat> SendGroupMessageAsync(ChatViewModel model, IFormFile file)
         {
             var currentUser = await _httpContextAccessor.HttpContext.GetUserAsync(_userManager);
-            var notification = new Chat
-            {
+            var fileUrl = file != null ? await UploadFileAsync(file, "chat-files") : null;
 
+            var message = new Chat
+            {
+                UserId = currentUser.Id,
                 Message = model.Message,
-                MessageType = "All",
-                NotificationDateTime = DateTime.Now,
-                Avatar = currentUser.AvatarImage
+                MessageType = file != null ? "file" : "text",
+                ImageChatRoom = fileUrl,
+                NotificationDateTime = DateTime.UtcNow,
+                ChatRoomDataId = model.ChatRoomId,
+                Avatar = currentUser.AvatarImage ?? "https://default-avatar.example.com"
             };
 
-            _dbContext.Chats.Add(notification);
+            _dbContext.Chats.Add(message);
             await _dbContext.SaveChangesAsync();
-            await _hubContext.Clients.All.SendAsync("ReceiveMessage", notification);
-            await _hubContext.Clients.All.SendAsync("ReceiveNotificationRealtime", new List<Chat> { notification });
 
+            await _hubContext.Clients.Group(model.ChatRoomId.ToString()).SendAsync("ReceiveMessage", message);
+
+            return message;
+        }
+        public async Task<ChatPrivate> SendPrivateMessageAsync(ChatPrivateViewModel model, IFormFile file)
+        {
+            var senderUser = await _httpContextAccessor.HttpContext.GetUserAsync(_userManager);
+            var fileUrl = file != null ? await UploadFileAsync(file, "private-chat") : null;
+
+            var message = new ChatPrivate
+            {
+                SenderUserId = senderUser.Id,
+                ReceiverUserId = model.ReceiverUserId,
+                Message = model.Message,
+                ImageChat = fileUrl,
+                NotificationDateTime = DateTime.UtcNow
+            };
+
+            _dbContext.ChatPrivate.Add(message);
+            await _dbContext.SaveChangesAsync();
+
+            await _hubContext.Clients.User(model.ReceiverUserId.ToString()).SendAsync("ReceivePrivateMessage", message);
+
+            return message;
+        }
+        private async Task<string> UploadFileAsync(IFormFile file, string folder)
+        {
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            using (var stream = file.OpenReadStream())
+            {
+                return await _blobService.UploadFileAsync(stream, "dainotecontainer", folder, fileName, file.ContentType);
+            }
         }
     }
 }

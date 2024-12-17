@@ -439,6 +439,32 @@ namespace dai.api.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
+        [HttpGet("{boardId}/users")]
+        public async Task<IActionResult> GetUsersInBoard(Guid boardId)
+        {
+            var board = await _context.Boards
+                .Include(b => b.Workspace)
+                .Include(b => b.Collaborators)
+                .ThenInclude(c => c.User)
+                .FirstOrDefaultAsync(b => b.Id == boardId);
+
+            if (board == null)
+                return NotFound(new { message = "Board not found." });
+
+            var users = board.Collaborators
+                .Select(c => new
+                {
+                    c.User_Id,
+                    c.User.FullName,
+                    c.User.UserName,
+                    c.User.AvatarImage,
+                    Permission = "Editor" // Collaborators are editors
+                }).ToList();
+
+            return Ok(users);
+        }
+
     }
 
 

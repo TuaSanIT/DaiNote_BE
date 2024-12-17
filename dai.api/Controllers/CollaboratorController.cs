@@ -333,7 +333,7 @@ namespace dai.api.Controllers
                 return BadRequest("Invalid boardId or userId");
             }
 
-            var isCollaborator = await _collaboratorRepository.IsUserCollaboratorAsync(boardId, userId);
+            var isCollaborator = await _collaboratorRepository.IsUserCollaboratorAsync(userId, boardId);
 
             return Ok(isCollaborator);
         }

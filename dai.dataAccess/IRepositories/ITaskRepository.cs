@@ -11,7 +11,8 @@ public interface ITaskRepository
 {
     Task<IEnumerable<TaskModel>> GetAllTasksAsync();
     Task<TaskModel> GetTaskByIdAsync(Guid id);
-    Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId);
+    //Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId);
+    Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId, Guid userId);
     Task<TaskModel> UpdateTaskAsync(TaskModel task);
     Task DeleteTaskAsync(Guid id);
 

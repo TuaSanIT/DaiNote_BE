@@ -39,60 +39,126 @@ public class ListRepository : IListRepository
                              .ToListAsync();
     }
 
-    public async Task<IEnumerable<ListModel>> GetListsAndTasksByBoardIdAsync(Guid boardId)
+    public async Task<IEnumerable<ListModel>> GetListsAndTasksByBoardIdAsync(Guid boardId, Guid userId, bool isOwner)
     {
         return await _context.lists
-                                    .Where(l => l.taskInList.Any(t => t.Board_Id == boardId))
-                                    .Include(l => l.taskInList)
-                                        .ThenInclude(til => til.Task)
-
-                                    .OrderBy(l => l.Position) // Order lists by position
-                                    .Select(l => new ListModel
-                                    {
-                                        Id = l.Id,
-                                        Title = l.Title,
-                                        Status = l.Status,
-                                        Position = l.Position,
-                                        NumberOfTaskInside = l.NumberOfTaskInside,
-                                        Create_At = l.Create_At,
-                                        Update_At = l.Update_At,
-                                        taskInList = l.taskInList
-                                            .OrderBy(til => til.Task.Position) // Order tasks by position
-                                            .Select(til => new TaskInListModel
-                                            {
-                                                Id = til.Id,
-                                                Board_Id = til.Board_Id,
-                                                Task_Id = til.Task_Id,
-                                                List_Id = til.List_Id,
-                                                Create_At = til.Create_At,
-                                                Update_At = til.Update_At,
-                                                Permission = til.Permission,
-                                                Task = til.Task == null ? null : new TaskModel
-                                                {
-                                                    Id = til.Task.Id,
-                                                    Title = til.Task.Title,
-                                                    Create_At = til.Task.Create_At,
-                                                    Update_At = til.Task.Update_At,
-                                                    Finish_At = til.Task.Finish_At,
-                                                    Description = til.Task.Description,
-                                                    Status = til.Task.Status,
-                                                    Position = til.Task.Position,
-                                                    AvailableCheck = til.Task.AvailableCheck,
-                                                    AssignedTo = til.Task.AssignedTo,
-                                                    AssignedToList = til.Task.AssignedToList,
-
-
-
-
-
-                                                    
-                                                    FileName = til.Task.FileName
-                                                }
-                                            })
-                                            .ToList()
-                                    })
-                                    .ToListAsync();
+            .Where(l => l.taskInList.Any(t => t.Board_Id == boardId))
+            .Include(l => l.taskInList)
+                .ThenInclude(til => til.Task)
+            .OrderBy(l => l.Position)
+            .Select(l => new ListModel
+            {
+                Id = l.Id,
+                Title = l.Title,
+                Status = l.Status,
+                Position = l.Position,
+                NumberOfTaskInside = l.taskInList.Count(til =>
+                    til.Task != null && ( // Task must not be null
+                        isOwner || // Owners get all tasks
+                        til.Permission == userId.ToString() || // Collaborators see their tasks
+                        til.Task.Status != "pending" // Collaborators exclude pending tasks created by others
+                    )),
+                Create_At = l.Create_At,
+                Update_At = l.Update_At,
+                taskInList = l.taskInList
+                    .Where(til =>
+                        til.Task != null && ( // Task must not be null
+                            isOwner || // Owners get all tasks
+                            til.Permission == userId.ToString() || // Collaborators see their tasks
+                            til.Task.Status != "pending" // Collaborators exclude pending tasks created by others
+                        ))
+                    .OrderBy(til => til.Task.Position)
+                    .Select(til => new TaskInListModel
+                    {
+                        Id = til.Id,
+                        Board_Id = til.Board_Id,
+                        Task_Id = til.Task_Id,
+                        List_Id = til.List_Id,
+                        Permission = til.Permission, // Creator GUID
+                        Task = new TaskModel
+                        {
+                            Id = til.Task.Id,
+                            Title = til.Task.Title,
+                            Create_At = til.Task.Create_At,
+                            Update_At = til.Task.Update_At,
+                            Finish_At = til.Task.Finish_At,
+                            Description = til.Task.Description,
+                            Status = til.Task.Status,
+                            Position = til.Task.Position,
+                            AvailableCheck = til.Task.AvailableCheck,
+                            AssignedToList = til.Task.AssignedToList,
+                            FileName = til.Task.FileName
+                        }
+                    }).ToList()
+            })
+            .ToListAsync();
     }
+
+
+    // Helper method to determine whether to include a task based on role and status
+    private bool ShouldIncludeTask(TaskInListModel til, Guid userId, bool isOwner)
+    {
+        if (isOwner)
+            return true; // Owner gets all tasks
+
+        // Collaborator rules:
+        if (til.Permission == userId.ToString()) // Task created by the collaborator
+            return true;
+
+        // Exclude tasks with status "pending" if created by others
+        return til.Task.Status != "pending";
+    }
+
+
+
+    //public async Task<IEnumerable<ListModel>> GetListsAndTasksByBoardIdAsync(Guid boardId)
+    //{
+    //    return await _context.lists
+    //                                .Where(l => l.taskInList.Any(t => t.Board_Id == boardId))
+    //                                .Include(l => l.taskInList)
+    //                                    .ThenInclude(til => til.Task)
+    //                                        //.ThenInclude(t => t.User)
+    //                                .OrderBy(l => l.Position) // Order lists by position
+    //                                .Select(l => new ListModel
+    //                                {
+    //                                    Id = l.Id,
+    //                                    Title = l.Title,
+    //                                    Status = l.Status,
+    //                                    Position = l.Position,
+    //                                    NumberOfTaskInside = l.NumberOfTaskInside,
+    //                                    Create_At = l.Create_At,
+    //                                    Update_At = l.Update_At,
+    //                                    taskInList = l.taskInList
+    //                                        .OrderBy(til => til.Task.Position) // Order tasks by position
+    //                                        .Select(til => new TaskInListModel
+    //                                        {
+    //                                            Id = til.Id,
+    //                                            Board_Id = til.Board_Id,
+    //                                            Task_Id = til.Task_Id,
+    //                                            List_Id = til.List_Id,
+    //                                            Create_At = til.Create_At,
+    //                                            Update_At = til.Update_At,
+    //                                            Permission = til.Permission,
+    //                                            Task = til.Task == null ? null : new TaskModel
+    //                                            {
+    //                                                Id = til.Task.Id,
+    //                                                Title = til.Task.Title,
+    //                                                Create_At = til.Task.Create_At,
+    //                                                Update_At = til.Task.Update_At,
+    //                                                Finish_At = til.Task.Finish_At,
+    //                                                Description = til.Task.Description,
+    //                                                Status = til.Task.Status,
+    //                                                Position = til.Task.Position,
+    //                                                AvailableCheck = til.Task.AvailableCheck,
+    //                                                AssignedTo = til.Task.AssignedTo,
+    //                                                AssignedToList = til.Task.AssignedToList,
+    //                                                FileName = til.Task.FileName
+    //                                            }
+    //                                        })
+    //                                        .ToList()
+    //                                })
+    //                                .ToListAsync();
+    //}
 
 
     public async Task<ListModel> AddListAsync(ListModel list, Guid boardId)
@@ -114,7 +180,7 @@ public class ListRepository : IListRepository
         await _context.lists.AddAsync(list);
         await _context.SaveChangesAsync();
 
-
+        // Add the corresponding TaskInList entry
         var taskInList = new TaskInListModel
         {
             List_Id = list.Id,
@@ -128,7 +194,7 @@ public class ListRepository : IListRepository
         await _context.TaskInList.AddAsync(taskInList);
         await _context.SaveChangesAsync();
 
-
+        // Update NumberOfListInside in the board
         board.NumberOfListInside++;
         _context.Boards.Update(board);
         await _context.SaveChangesAsync();
@@ -153,7 +219,7 @@ public class ListRepository : IListRepository
         _context.lists.Update(existingList);
         await _context.SaveChangesAsync();
 
-
+        // Update TaskInList
         if (existingList.taskInList != null)
         {
             foreach (var taskInList in existingList.taskInList)
@@ -175,33 +241,33 @@ public class ListRepository : IListRepository
         {
             var boardId = list.taskInList.FirstOrDefault()?.Board_Id;
 
-
+            // Delete all task IDs in the list
             var taskIds = await _context.TaskInList
                                         .Where(t => t.List_Id == listId)
                                         .Select(t => t.Task_Id)
                                         .ToListAsync();
 
-
+            // Delete all tasks in the list
             var tasks = await _context.Tasks
                                       .Where(t => taskIds.Contains(t.Id))
                                       .ToListAsync();
             _context.Tasks.RemoveRange(tasks);
 
-
+            // Delete all TaskInList entries related to the list
             var taskInListEntries = await _context.TaskInList
                                                   .Where(t => t.List_Id == listId)
                                                   .ToListAsync();
             _context.TaskInList.RemoveRange(taskInListEntries);
             await _context.SaveChangesAsync();
 
-
+            // Delete the list itself
             _context.lists.Remove(list);
 
             await _context.SaveChangesAsync();
 
             if (boardId.HasValue)
             {
-
+                // Adjust positions of remaining lists
                 var listsToUpdate = await _context.lists
                     .Where(l => l.taskInList.Any(til => til.Board_Id == boardId.Value && l.Position > list.Position))
                     .ToListAsync();
@@ -212,7 +278,7 @@ public class ListRepository : IListRepository
                     _context.lists.Update(l);
                 }
 
-
+                // Update NumberOfListInside in the board
                 var board = await _context.Boards.FirstOrDefaultAsync(b => b.Id == boardId.Value);
                 if (board != null)
                 {
