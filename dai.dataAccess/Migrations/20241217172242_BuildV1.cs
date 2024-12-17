@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace dai.dataAccess.Migrations
 {
-
-    public partial class initial : Migration
+    /// <inheritdoc />
+    public partial class BuildV1 : Migration
     {
-
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -718,7 +718,7 @@ namespace dai.dataAccess.Migrations
                 column: "UserId");
         }
 
-
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

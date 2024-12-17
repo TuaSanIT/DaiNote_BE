@@ -60,7 +60,7 @@ namespace dai.api.Controllers
                 OrderCode = orderCode,
                 Amount = 49000,
                 Status = "PENDING",
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
                 Description = "VIP Membership Payment"
             };
             await _context.Transactions.AddAsync(transaction);
@@ -117,12 +117,12 @@ namespace dai.api.Controllers
 
 
                     transaction.Status = "PAID";
-                    transaction.PaidAt = DateTime.UtcNow;
+                    transaction.PaidAt = DateTime.Now;
                     await _context.SaveChangesAsync();
 
 
                     user.IsVipSupplier = true;
-                    user.VipExpiryDate = DateTime.UtcNow.AddMonths(1);
+                    user.VipExpiryDate = DateTime.Now.AddMonths(1);
                     await _context.SaveChangesAsync();
 
                     return Redirect($"{_config["PayOS:SuccessUrl"]}?orderCode={orderCode}");
