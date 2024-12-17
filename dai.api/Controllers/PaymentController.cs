@@ -51,7 +51,7 @@ namespace dai.api.Controllers
             if (user == null)
                 return Unauthorized(new { message = "User not found." });
 
-            var orderCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"));
+            var orderCode = int.Parse(DateTimeOffset.Now.AddHours(7).ToString("ffffff"));
 
 
             var transaction = new TransactionModel
@@ -60,7 +60,7 @@ namespace dai.api.Controllers
                 OrderCode = orderCode,
                 Amount = 49000,
                 Status = "PENDING",
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.Now.AddHours(7),
                 Description = "VIP Membership Payment"
             };
             await _context.Transactions.AddAsync(transaction);
@@ -117,12 +117,12 @@ namespace dai.api.Controllers
 
 
                     transaction.Status = "PAID";
-                    transaction.PaidAt = DateTime.Now;
+                    transaction.PaidAt = DateTime.Now.AddHours(7);
                     await _context.SaveChangesAsync();
 
 
                     user.IsVipSupplier = true;
-                    user.VipExpiryDate = DateTime.Now.AddMonths(1);
+                    user.VipExpiryDate = DateTime.Now.AddHours(7).AddMonths(1);
                     await _context.SaveChangesAsync();
 
                     return Redirect($"{_config["PayOS:SuccessUrl"]}?orderCode={orderCode}");
