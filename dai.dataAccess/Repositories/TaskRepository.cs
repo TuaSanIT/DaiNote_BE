@@ -134,6 +134,7 @@ public class TaskRepository : ITaskRepository
         {
             existingTaskInList.Task_Id = task.Id;
             existingTaskInList.Update_At = DateTime.Now;
+            existingTaskInList.Permission = userId.ToString();
             _context.TaskInList.Update(existingTaskInList);
         }
         else
