@@ -10,5 +10,6 @@ namespace dai.core.DTO.Chat
     {
         public Guid ReceiverUserId { get; set; }
         public string? Message { get; set; }
+        public Guid BoardId { get; set; }
     }
 }

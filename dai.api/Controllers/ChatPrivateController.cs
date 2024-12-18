@@ -29,55 +29,90 @@ namespace dai.api.Controllers
             this.hubContext = hubContext;
             _storageService = storageService;
         }
-        [HttpGet("messages")]
-        public async Task<IActionResult> GetPrivateMessages(Guid senderUserId, Guid receiverUserId)
-        {
-            try
-            {
-                var privateMessages = await _context.ChatPrivate
-                    .Where(c => (c.SenderUserId == senderUserId && c.ReceiverUserId == receiverUserId) ||
-                                (c.SenderUserId == receiverUserId && c.ReceiverUserId == senderUserId))
-                    .OrderBy(c => c.NotificationDateTime)
-                    .Select(c => new
-                    {
-                        c.ChatPrivateId,
-                        c.SenderUserId,
-                        c.ReceiverUserId,
-                        c.Message,
-                        c.ImageChat,
-                        NotificationDateTime = c.NotificationDateTime.ToString("HH:mm dd/MM/yyyy"),
-                        SenderUser = new
-                        {
-                            c.SenderUser.Email,
-                            c.SenderUser.AvatarImage,
-                            c.SenderUser.FullName
-                        },
-                        ReceiverUser = new
-                        {
-                            c.ReceiverUser.Email,
-                            c.ReceiverUser.AvatarImage,
-                            c.ReceiverUser.FullName
-                        }
-                    })
-                    .ToListAsync();
 
-                return Ok(privateMessages);
-            }
-            catch (Exception ex)
+        private Guid? GetUserIdFromHeader()
+        {
+            if (Request.Headers.TryGetValue("UserId", out var userIdString) && Guid.TryParse(userIdString, out var userId))
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                Console.WriteLine($"UserId from header: {userId}");
+                return userId;
             }
+            Console.WriteLine("UserId is missing or invalid in header");
+            return null;
         }
+
+
+        private async Task<bool> IsUserInBoardAsync(Guid boardId, Guid userId)
+        {
+            Console.WriteLine($"Checking permissions for UserId: {userId}, BoardId: {boardId}");
+
+            var board = await _context.Boards
+                .Include(b => b.Workspace)
+                .ThenInclude(w => w.User)
+                .Include(b => b.Collaborators)
+                .ThenInclude(c => c.User)
+                .FirstOrDefaultAsync(b => b.Id == boardId);
+
+            if (board == null)
+            {
+                Console.WriteLine("Board not found");
+                return false;
+            }
+
+            var isAuthorized = board.Workspace.UserId == userId || board.Collaborators.Any(c => c.User_Id == userId);
+            Console.WriteLine($"IsAuthorized: {isAuthorized}");
+            return isAuthorized;
+        }
+
+        [HttpGet("messages")]
+        public async Task<IActionResult> GetPrivateMessages(Guid senderUserId, Guid receiverUserId, Guid boardId)
+        {
+            // Validate sender and receiver permissions
+            if (!await IsUserInBoardAsync(boardId, senderUserId) || !await IsUserInBoardAsync(boardId, receiverUserId))
+            {
+                return Unauthorized(new { success = false, message = "You are not authorized to view this chat." });
+            }
+
+            // Fetch messages
+            var privateMessages = await _context.ChatPrivate
+                .Where(c => (c.SenderUserId == senderUserId && c.ReceiverUserId == receiverUserId) ||
+                            (c.SenderUserId == receiverUserId && c.ReceiverUserId == senderUserId))
+                .OrderBy(c => c.NotificationDateTime)
+                .Select(c => new
+                {
+                    c.ChatPrivateId,
+                    c.SenderUserId,
+                    c.ReceiverUserId,
+                    c.Message,
+                    c.ImageChat,
+                    NotificationDateTime = c.NotificationDateTime.ToString("HH:mm dd/MM/yyyy"),
+                    SenderUser = new
+                    {
+                        c.SenderUser.Email,
+                        c.SenderUser.AvatarImage,
+                        c.SenderUser.FullName
+                    },
+                    ReceiverUser = new
+                    {
+                        c.ReceiverUser.Email,
+                        c.ReceiverUser.AvatarImage,
+                        c.ReceiverUser.FullName
+                    }
+                })
+                .ToListAsync();
+
+            return Ok(privateMessages);
+        }
+
+        // Start a private chat between two users
         [HttpPost("start")]
         public async Task<IActionResult> StartPrivateChat([FromBody] StartPrivateChatRequest model)
         {
-            // Validate sender and receiver
-            var senderUser = await _context.Users.FindAsync(model.SenderUserId);
-            var receiverUser = await _context.Users.FindAsync(model.ReceiverUserId);
-
-            if (senderUser == null || receiverUser == null)
+            // Validate sender and receiver permissions
+            if (!await IsUserInBoardAsync(model.BoardId, model.SenderUserId) ||
+                !await IsUserInBoardAsync(model.BoardId, model.ReceiverUserId))
             {
-                return NotFound(new { success = false, message = "Sender or Receiver user not found." });
+                return Unauthorized(new { success = false, message = "You are not authorized to start this chat." });
             }
 
             // Check if a private chat already exists
@@ -91,13 +126,13 @@ namespace dai.api.Controllers
                 return Ok(new { success = true, chatPrivateId = existingChat.ChatPrivateId });
             }
 
-            // Create new private chat
+            // Create a new private chat
             var newChat = new ChatPrivate
             {
                 SenderUserId = model.SenderUserId,
                 ReceiverUserId = model.ReceiverUserId,
                 NotificationDateTime = DateTime.UtcNow,
-                Message = "Private chat started" // Default message or log
+                Message = "Private chat started"
             };
 
             _context.ChatPrivate.Add(newChat);
@@ -106,35 +141,31 @@ namespace dai.api.Controllers
             return Ok(new { success = true, chatPrivateId = newChat.ChatPrivateId });
         }
 
-        // Send private message with optional file upload
+        // Send private message
         [HttpPost("send")]
-        public async Task<IActionResult> SendPrivateMessage([FromForm] ChatPrivateViewModel model, IFormFile file)
+        public async Task<IActionResult> SendPrivateMessage([FromForm] ChatPrivateViewModel model, IFormFile? file)
         {
-            var senderUser = await _userManager.GetUserAsync(User);
-
-            // Validate sender
-            if (senderUser == null)
+            var senderUserId = GetUserIdFromHeader();
+            if (senderUserId == null)
             {
-                return Unauthorized(new { success = false, message = "User not authenticated." });
+                return Unauthorized(new { success = false, message = "User is not authenticated." });
             }
 
-            // Validate receiver
-            var receiverUser = await _userManager.FindByIdAsync(model.ReceiverUserId.ToString());
-            if (receiverUser == null)
+            // Validate sender and receiver permissions
+            if (!await IsUserInBoardAsync(model.BoardId, senderUserId.Value) ||
+                !await IsUserInBoardAsync(model.BoardId, model.ReceiverUserId))
             {
-                return NotFound(new { success = false, message = "Receiver user does not exist." });
+                return Unauthorized(new { success = false, message = "You are not authorized to send this message." });
             }
 
-            // Build private message
             var privateChat = new ChatPrivate
             {
-                SenderUserId = senderUser.Id,
+                SenderUserId = senderUserId.Value,
                 ReceiverUserId = model.ReceiverUserId,
                 Message = model.Message ?? string.Empty,
                 NotificationDateTime = DateTime.UtcNow
             };
 
-            // Handle file upload
             if (file != null)
             {
                 try
@@ -152,19 +183,59 @@ namespace dai.api.Controllers
                 }
             }
 
-            // Save message to database
             _context.ChatPrivate.Add(privateChat);
             await _context.SaveChangesAsync();
 
-            // Send message to the receiver via SignalR
-            await hubContext.Clients.User(model.ReceiverUserId.ToString()).SendAsync("ReceivePrivateMessage", privateChat);
+            var senderUser = await _userManager.FindByIdAsync(senderUserId.Value.ToString());
+            if (senderUser == null)
+            {
+                return StatusCode(500, "Sender user not found.");
+            }
 
-            return Ok(new { success = true, privateChat });
+            // Notify receiver in real-time
+            await hubContext.Clients.User(model.ReceiverUserId.ToString()).SendAsync("ReceivePrivateMessage", new
+            {
+                privateChat.ChatPrivateId,
+                privateChat.SenderUserId,
+                privateChat.ReceiverUserId,
+                privateChat.Message,
+                privateChat.ImageChat,
+                privateChat.NotificationDateTime,
+                SenderUser = new
+                {
+                    senderUser.Id,
+                    senderUser.Email,
+                    senderUser.FullName,
+                    senderUser.AvatarImage
+                }
+            });
+
+            return Ok(new
+            {
+                success = true,
+                privateChat = new
+                {
+                    privateChat.ChatPrivateId,
+                    privateChat.SenderUserId,
+                    privateChat.ReceiverUserId,
+                    privateChat.Message,
+                    privateChat.ImageChat,
+                    privateChat.NotificationDateTime,
+                    SenderUser = new
+                    {
+                        senderUser.Id,
+                        senderUser.Email,
+                        senderUser.FullName,
+                        senderUser.AvatarImage
+                    }
+                }
+            });
         }
         public class StartPrivateChatRequest
         {
             public Guid SenderUserId { get; set; }
             public Guid ReceiverUserId { get; set; }
+            public Guid BoardId { get; set; }
         }
     }
 }

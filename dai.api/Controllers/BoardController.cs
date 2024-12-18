@@ -445,25 +445,44 @@ namespace dai.api.Controllers
         {
             var board = await _context.Boards
                 .Include(b => b.Workspace)
+                .ThenInclude(w => w.User) // Include the workspace owner
                 .Include(b => b.Collaborators)
-                .ThenInclude(c => c.User)
+                .ThenInclude(c => c.User) // Include collaborator details
                 .FirstOrDefaultAsync(b => b.Id == boardId);
 
             if (board == null)
                 return NotFound(new { message = "Board not found." });
 
+            // Fetch collaborators
             var users = board.Collaborators
                 .Select(c => new
                 {
-                    c.User_Id,
+                    UserId = c.User_Id,
                     c.User.FullName,
                     c.User.UserName,
                     c.User.AvatarImage,
-                    Permission = "Editor" // Collaborators are editors
+                    Permission = "Editor" // Collaborators have 'Editor' permission
                 }).ToList();
+
+            // Fetch the board owner
+            var boardOwner = new
+            {
+                UserId = board.Workspace.UserId,
+                board.Workspace.User.FullName,
+                board.Workspace.User.UserName,
+                board.Workspace.User.AvatarImage,
+                Permission = "Owner" // Owner has 'Owner' permission
+            };
+
+            // Add the owner to the list if not already present
+            if (!users.Any(u => u.UserId == board.Workspace.UserId))
+            {
+                users.Add(boardOwner);
+            }
 
             return Ok(users);
         }
+
 
     }
 
