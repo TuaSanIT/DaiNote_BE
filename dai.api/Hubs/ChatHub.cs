@@ -213,36 +213,24 @@ namespace dai.api.Hubs
             await Clients.Group(chatRoomId.ToString()).SendAsync("ReceiveGroupMessage", chat);
         }
 
-        public async Task SendPrivateMessage(IFormFile file, string message, Guid receiverUserId)
+        public async Task SendPrivateMessage(string receiverUserId, string message, string senderUserId)
         {
-            string fileUrl = null;
-
-            if (file != null)
+            // Notify the receiver
+            await Clients.User(receiverUserId).SendAsync("ReceivePrivateMessage", new
             {
-                fileUrl = await UploadFileToAzureBlob(file, "private-chat");
-            }
+                Message = message,
+                SenderUserId = senderUserId,
+                ReceiverUserId = receiverUserId,
+                NotificationDateTime = DateTime.UtcNow.ToString("HH:mm dd/MM/yyyy")
+            });
 
-            var senderUser = await _context.userModels
-    .FirstOrDefaultAsync(u => u.Email == Context.User.Identity.Name);
-
-            if (senderUser == null)
+            // Optionally notify the sender (e.g., for confirmation)
+            await Clients.Caller.SendAsync("MessageSent", new
             {
-                throw new InvalidOperationException("Unable to find the authenticated user.");
-            }
-
-            var chatPrivate = new ChatPrivate
-            {
-                SenderUserId = senderUser.Id, 
-                ReceiverUserId = receiverUserId, 
-                Message = message ?? "File sent",
-                ImageChat = fileUrl,
-                NotificationDateTime = DateTime.UtcNow
-            };
-
-            _context.ChatPrivate.Add(chatPrivate);
-            await _context.SaveChangesAsync();
-
-            await Clients.User(receiverUserId.ToString()).SendAsync("ReceivePrivateMessage", chatPrivate);
+                Message = message,
+                ReceiverUserId = receiverUserId,
+                NotificationDateTime = DateTime.UtcNow.ToString("HH:mm dd/MM/yyyy")
+            });
         }
         private async Task<string> UploadFileToAzureBlob(IFormFile file, string folder)
         {

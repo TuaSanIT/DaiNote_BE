@@ -18,7 +18,7 @@ namespace dai.api.Controllers
     {
         private readonly AppDbContext _context;
         private readonly UserManager<UserModel> _userManager;
-        private readonly IHubContext<ChatHub> hubContext;
+        private readonly IHubContext<ChatHub> _hubContext;
         private readonly AzureBlobService _storageService;
 
 
@@ -26,7 +26,7 @@ namespace dai.api.Controllers
         {
             _context = context;
             _userManager = userManager;
-            this.hubContext = hubContext;
+            _hubContext = hubContext;
             _storageService = storageService;
         }
 
@@ -193,7 +193,7 @@ namespace dai.api.Controllers
             }
 
             // Notify receiver in real-time
-            await hubContext.Clients.User(model.ReceiverUserId.ToString()).SendAsync("ReceivePrivateMessage", new
+            await _hubContext.Clients.User(model.ReceiverUserId.ToString()).SendAsync("ReceivePrivateMessage", new
             {
                 privateChat.ChatPrivateId,
                 privateChat.SenderUserId,
