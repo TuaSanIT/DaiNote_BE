@@ -12,6 +12,7 @@ using dai.api.Services.ServiceExtension;
 using dai.api.Middleware;
 using Microsoft.OpenApi.Models;
 using dai.api.Hubs;
+using Azure.Storage.Blobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,7 +51,6 @@ builder.Services.AddIdentity<UserModel, UserRoleModel>(options =>
 
 builder.Services.AddSingleton<OnlineUserService>();
 
-
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IListRepository, ListRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
@@ -61,7 +61,7 @@ builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
 builder.Services.AddScoped<IDragAndDropRepository, DragAndDropRepository>();
 builder.Services.AddScoped<ICollaboratorRepository, CollaboratorRepository>();
-
+builder.Services.AddScoped<IChatRepository, ChatRepository>();
 
 builder.Services.AddScoped<AzureBlobService>();
 builder.Services.AddScoped<TokenService>();
@@ -74,7 +74,11 @@ builder.Services.AddHostedService<TaskStatusUpdateService>();
 builder.Services.AddAutoMapper(typeof(dai.core.Mapping.AutoMapperProfile));
 
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-builder.Services.AddControllers();
+builder.Services.AddSingleton(x =>
+{
+    string connectionString = builder.Configuration.GetSection("AzureBlobStorage:ConnectionString").Value;
+    return new BlobServiceClient(connectionString);
+}); builder.Services.AddControllers();
 
 
 builder.Services.AddEndpointsApiExplorer();
@@ -129,9 +133,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-
-
-
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -160,7 +161,13 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddHttpClient();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true; // Bật thông tin chi tiết lỗi
+    options.ClientTimeoutInterval = TimeSpan.FromMinutes(2); 
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15); // Tần suất gửi tín hiệu "ping"
+});
+
 
 
 builder.Services.AddAuthorization(options =>

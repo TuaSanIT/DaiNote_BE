@@ -125,6 +125,15 @@ namespace dai.dataAccess.Repositories
 
             return participants.Distinct().ToList();
         }
+        public async Task<List<UserModel>> GetUsersByBoardIdAsync(Guid boardId)
+        {
+            return await _context.Boards
+                .Where(b => b.Id == boardId)
+                .SelectMany(b => b.Collaborators)
+                .Select(c => c.User)
+                .Distinct()
+                .ToListAsync();
+        }
     }
 
 }

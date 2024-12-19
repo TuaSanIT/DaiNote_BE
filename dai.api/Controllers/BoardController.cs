@@ -440,45 +440,38 @@ namespace dai.api.Controllers
             }
         }
 
-        [HttpGet("{boardId}/users")]
-        public async Task<IActionResult> GetUsersInBoard(Guid boardId)
+        [HttpGet("board/users")]
+        public async Task<IActionResult> GetBoardUsers([FromQuery] Guid boardId)
         {
             var board = await _context.Boards
-                .Include(b => b.Workspace)
-                .ThenInclude(w => w.User) // Include the workspace owner
-                .Include(b => b.Collaborators)
-                .ThenInclude(c => c.User) // Include collaborator details
+                .Include(b => b.Workspace) 
+                .ThenInclude(w => w.User) 
+                .Include(b => b.Collaborators) 
+                .ThenInclude(c => c.User) 
                 .FirstOrDefaultAsync(b => b.Id == boardId);
 
             if (board == null)
-                return NotFound(new { message = "Board not found." });
-
-            // Fetch collaborators
-            var users = board.Collaborators
-                .Select(c => new
-                {
-                    UserId = c.User_Id,
-                    c.User.FullName,
-                    c.User.UserName,
-                    c.User.AvatarImage,
-                    Permission = "Editor" // Collaborators have 'Editor' permission
-                }).ToList();
-
-            // Fetch the board owner
-            var boardOwner = new
             {
-                UserId = board.Workspace.UserId,
-                board.Workspace.User.FullName,
-                board.Workspace.User.UserName,
-                board.Workspace.User.AvatarImage,
-                Permission = "Owner" // Owner has 'Owner' permission
-            };
-
-            // Add the owner to the list if not already present
-            if (!users.Any(u => u.UserId == board.Workspace.UserId))
-            {
-                users.Add(boardOwner);
+                return NotFound("Board not found.");
             }
+
+            var owner = board.Workspace.User;
+
+            var collaborators = board.Collaborators
+                .Select(c => c.User)
+                .ToList();
+
+            var users = collaborators
+                .Append(owner)
+                .DistinctBy(u => u.Id)
+                .Select(u => new
+                {
+                    u.Id,
+                    u.FullName,
+                    u.UserName,
+                    u.AvatarImage
+                })
+                .ToList();
 
             return Ok(users);
         }

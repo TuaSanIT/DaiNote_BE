@@ -12,6 +12,6 @@ namespace dai.core.DTO.Chat
         public string Email { get; set; }
         public string Avatar { get; set; }
         public string FullName { get; set; }
-        public string CurrUserId { get; set; }
+        public Guid CurrUserId { get; set; }
     }
 }

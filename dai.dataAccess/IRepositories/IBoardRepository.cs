@@ -1,4 +1,5 @@
 ﻿using dai.core.Models;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,5 +19,6 @@ namespace dai.dataAccess.IRepositories
         Task<bool> IsBoardOwnerAsync(Guid userId, Guid boardId);
         Task<bool> IsBoardCollaboratorAsync(Guid userId, Guid boardId);
         Task<IEnumerable<UserModel>> GetBoardParticipantsAsync(Guid boardId);
+        Task<List<UserModel>> GetUsersByBoardIdAsync(Guid boardId);
     }
 }
