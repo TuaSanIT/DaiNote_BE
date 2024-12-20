@@ -181,6 +181,7 @@ namespace dai.api.Controllers
                 return NotFound("Sender or Receiver not found.");
             }
 
+            // Kiểm tra nếu nhóm chat đã tồn tại
             var existingChat = await _context.ChatPrivate
                 .FirstOrDefaultAsync(cp =>
                     (cp.SenderUserId == request.SenderUserId && cp.ReceiverUserId == request.ReceiverUserId) ||
@@ -188,21 +189,35 @@ namespace dai.api.Controllers
 
             if (existingChat != null)
             {
-                return Ok(new { ChatPrivateId = existingChat.ChatPrivateId });
+                return Ok(new
+                {
+                    ChatPrivateId = existingChat.ChatPrivateId,
+                    Message = existingChat.Message,
+                    NotificationDateTime = existingChat.NotificationDateTime
+                });
             }
 
-            var chatPrivate = new ChatPrivate
+            // Tạo mới nhóm chat và thêm tin nhắn mẫu
+            var newChat = new ChatPrivate
             {
                 ChatPrivateId = Guid.NewGuid(),
                 SenderUserId = request.SenderUserId,
-                ReceiverUserId = request.ReceiverUserId
+                ReceiverUserId = request.ReceiverUserId,
+                Message = $"Chat started between {sender.FullName} and {receiver.FullName}.", // Tin nhắn mẫu
+                NotificationDateTime = DateTime.UtcNow
             };
 
-            _context.ChatPrivate.Add(chatPrivate);
+            _context.ChatPrivate.Add(newChat);
             await _context.SaveChangesAsync();
 
-            return Ok(new { ChatPrivateId = chatPrivate.ChatPrivateId });
+            return Ok(new
+            {
+                ChatPrivateId = newChat.ChatPrivateId,
+                Message = newChat.Message,
+                NotificationDateTime = newChat.NotificationDateTime
+            });
         }
+
     }
     public class CreateRoomRequest
     {

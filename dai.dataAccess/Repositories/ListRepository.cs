@@ -94,72 +94,16 @@ public class ListRepository : IListRepository
             .ToListAsync();
     }
 
-
-    // Helper method to determine whether to include a task based on role and status
     private bool ShouldIncludeTask(TaskInListModel til, Guid userId, bool isOwner)
     {
         if (isOwner)
-            return true; // Owner gets all tasks
+            return true; 
 
-        // Collaborator rules:
-        if (til.Permission == userId.ToString()) // Task created by the collaborator
+        if (til.Permission == userId.ToString()) 
             return true;
 
-        // Exclude tasks with status "pending" if created by others
         return til.Task.Status != "pending";
     }
-
-
-
-    //public async Task<IEnumerable<ListModel>> GetListsAndTasksByBoardIdAsync(Guid boardId)
-    //{
-    //    return await _context.lists
-    //                                .Where(l => l.taskInList.Any(t => t.Board_Id == boardId))
-    //                                .Include(l => l.taskInList)
-    //                                    .ThenInclude(til => til.Task)
-    //                                        //.ThenInclude(t => t.User)
-    //                                .OrderBy(l => l.Position) // Order lists by position
-    //                                .Select(l => new ListModel
-    //                                {
-    //                                    Id = l.Id,
-    //                                    Title = l.Title,
-    //                                    Status = l.Status,
-    //                                    Position = l.Position,
-    //                                    NumberOfTaskInside = l.NumberOfTaskInside,
-    //                                    Create_At = l.Create_At,
-    //                                    Update_At = l.Update_At,
-    //                                    taskInList = l.taskInList
-    //                                        .OrderBy(til => til.Task.Position) // Order tasks by position
-    //                                        .Select(til => new TaskInListModel
-    //                                        {
-    //                                            Id = til.Id,
-    //                                            Board_Id = til.Board_Id,
-    //                                            Task_Id = til.Task_Id,
-    //                                            List_Id = til.List_Id,
-    //                                            Create_At = til.Create_At,
-    //                                            Update_At = til.Update_At,
-    //                                            Permission = til.Permission,
-    //                                            Task = til.Task == null ? null : new TaskModel
-    //                                            {
-    //                                                Id = til.Task.Id,
-    //                                                Title = til.Task.Title,
-    //                                                Create_At = til.Task.Create_At,
-    //                                                Update_At = til.Task.Update_At,
-    //                                                Finish_At = til.Task.Finish_At,
-    //                                                Description = til.Task.Description,
-    //                                                Status = til.Task.Status,
-    //                                                Position = til.Task.Position,
-    //                                                AvailableCheck = til.Task.AvailableCheck,
-    //                                                AssignedTo = til.Task.AssignedTo,
-    //                                                AssignedToList = til.Task.AssignedToList,
-    //                                                FileName = til.Task.FileName
-    //                                            }
-    //                                        })
-    //                                        .ToList()
-    //                                })
-    //                                .ToListAsync();
-    //}
-
 
     public async Task<ListModel> AddListAsync(ListModel list, Guid boardId)
     {

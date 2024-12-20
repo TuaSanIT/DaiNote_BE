@@ -36,66 +36,6 @@ public class TaskRepository : ITaskRepository
                      .FirstOrDefaultAsync(t => t.Id == id);
 
     }
-
-    //public async Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId, Guid userId)
-    //{
-    //    var list = await _context.lists
-    //                             .Include(l => l.taskInList)
-    //                             .FirstOrDefaultAsync(l => l.Id == listId);
-
-    //    if (list == null)
-    //    {
-    //        throw new NullReferenceException("List not found");
-    //    }
-
-    //    // Retrieve the board ID associated with this list
-    //    var boardId = list.taskInList.FirstOrDefault()?.Board_Id ?? Guid.Empty;
-
-    //    // Determine if the user is the owner or collaborator
-    //    var board = await _context.Boards.Include(b => b.Workspace)
-    //                                     .FirstOrDefaultAsync(b => b.Id == boardId);
-
-    //    if (board == null)
-    //    {
-    //        throw new NullReferenceException("Board not found");
-    //    }
-
-    //    string permission = board.Workspace.UserId == userId ? "owner" : "collaborator";
-
-    //    //task.Create_At = DateTime.Now;
-    //    task.Update_At = DateTime.Now;
-    //    //task.Position = list.taskInList.Count() + 1;
-    //    task.Position = list.taskInList.Count(til => til.Task_Id.HasValue) + 1;
-    //    task.AssignedTo = task.AssignedToList != null
-    //            ? string.Join(",", task.AssignedToList)
-    //            : string.Empty;
-
-    //    await _context.Tasks.AddAsync(task);
-    //    await _context.SaveChangesAsync();
-
-    //    // Add the TaskInList relationship with appropriate permission
-    //    var newTaskInList = new TaskInListModel
-    //    {
-    //        Board_Id = boardId,
-    //        Task_Id = task.Id,
-    //        List_Id = listId,
-    //        Create_At = DateTime.Now,
-    //        Update_At = DateTime.Now,
-    //        Permission = userId.ToString() // Set permission based on user role
-    //    };
-
-    //    _context.TaskInList.Add(newTaskInList);
-    //    await _context.SaveChangesAsync();
-
-    //    // Update the task count in the list
-    //    list.NumberOfTaskInside++;
-    //    _context.lists.Update(list);
-    //    await _context.SaveChangesAsync();
-
-    //    return task;
-    //}
-
-
     public async Task<TaskModel> AddTaskAsync(TaskModel task, Guid listId, Guid userId)
     {
         var list = await _context.lists

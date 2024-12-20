@@ -317,7 +317,7 @@ namespace dai.api.Controllers
         [HttpPost("{boardId}/import")]
         public async Task<IActionResult> ImportExcel(Guid boardId, IFormFile file)
         {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // giay phep
 
             if (file == null || file.Length == 0)
                 return BadRequest("File is not provided or empty.");
@@ -345,7 +345,11 @@ namespace dai.api.Controllers
                 var rows = worksheet.Dimension.Rows;
                 var columns = worksheet.Dimension.Columns;
 
-                bool isDetailed = columns == 7;
+                // ko lay row thua
+                int nonEmptyColumns = Enumerable.Range(1, columns)
+                    .Count(col => !string.IsNullOrWhiteSpace(worksheet.Cells[1, col]?.Text));
+
+                bool isDetailed = nonEmptyColumns == 7;
 
                 if (!isDetailed)
                     return BadRequest("Unsupported Excel template. Please upload a valid file.");
