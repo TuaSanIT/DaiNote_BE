@@ -5,27 +5,26 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
+//using dai.dataAccess.DAO;
 using dai.core.Models;
 using dai.api.Helper;
 using dai.api.Services.ServicesAPI;
 using dai.api.Services.ServiceExtension;
 using dai.api.Middleware;
 using Microsoft.OpenApi.Models;
-using dai.api.Hubs;
-using Azure.Storage.Blobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
-
+// Add DbContext
 builder.Services.AddDbContext<AppDbContext>();
 
-
+//Mail Services
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddTransient<IEmailService, EmailService>();
 
-
+//Cấu hình session
 builder.Services.AddDistributedMemoryCache(); // Bộ nhớ cache để lưu session
 builder.Services.AddSession(options =>
 {
@@ -35,7 +34,7 @@ builder.Services.AddSession(options =>
     options.Cookie.SameSite = SameSiteMode.Strict; // Ngăn chặn CSRF
 });
 
-
+// Add Identity
 builder.Services.AddIdentity<UserModel, UserRoleModel>(options =>
 {
     options.SignIn.RequireConfirmedEmail = true;
@@ -49,8 +48,7 @@ builder.Services.AddIdentity<UserModel, UserRoleModel>(options =>
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddSingleton<OnlineUserService>();
-
+// Add Repository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IListRepository, ListRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
@@ -59,28 +57,28 @@ builder.Services.AddScoped<ILabelRepository, LabelRepository>();
 builder.Services.AddScoped<INoteLabelRepository, NoteLabelRepository>();
 builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();
+//builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IDragAndDropRepository, DragAndDropRepository>();
 builder.Services.AddScoped<ICollaboratorRepository, CollaboratorRepository>();
-builder.Services.AddScoped<IChatRepository, ChatRepository>();
 
+// Service
 builder.Services.AddScoped<AzureBlobService>();
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddScoped<ChatService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddHostedService<VipExpiryCheckerService>();
-builder.Services.AddHostedService<TaskStatusUpdateService>();
+
+// Add Hosted Service for trash cleanup
+builder.Services.AddHostedService<ReminderService>();
+builder.Services.AddHostedService<TrashCleanupService>();
 
 
+// Đăng ký các DAO
+//builder.Services.AddScoped<MessageDAO>();
+
+// Register AutoMapper
 builder.Services.AddAutoMapper(typeof(dai.core.Mapping.AutoMapperProfile));
 
-builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-builder.Services.AddSingleton(x =>
-{
-    string connectionString = builder.Configuration.GetSection("AzureBlobStorage:ConnectionString").Value;
-    return new BlobServiceClient(connectionString);
-}); builder.Services.AddControllers();
+builder.Services.AddControllers();
 
-
+// Learn more about configuring Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -110,15 +108,9 @@ builder.Services.AddSwaggerGen(options =>
             Array.Empty<string>()
         }
     });
-
-    options.MapType<IFormFile>(() => new OpenApiSchema
-    {
-        Type = "string",
-        Format = "binary"
-    });
 });
 
-
+// CORS Configuration
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 
 builder.Services.AddCors(options =>
@@ -127,12 +119,13 @@ builder.Services.AddCors(options =>
     {
         builder.WithOrigins(allowedOrigins) // Sử dụng danh sách từ cấu hình
                .AllowAnyHeader()
-               .AllowAnyMethod()
-               .SetIsOriginAllowed(origin => true)
-               .AllowCredentials();
+               .AllowAnyMethod();
     });
 });
 
+
+
+// Authentication and JWT Configuration
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -161,15 +154,8 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddHttpClient();
-builder.Services.AddSignalR(options =>
-{
-    options.EnableDetailedErrors = true; // Bật thông tin chi tiết lỗi
-    options.ClientTimeoutInterval = TimeSpan.FromMinutes(2); 
-    options.KeepAliveInterval = TimeSpan.FromSeconds(15); // Tần suất gửi tín hiệu "ping"
-});
 
-
-
+// Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
@@ -196,7 +182,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     app.UseSwagger();
@@ -219,10 +205,9 @@ app.UseRouting();
 
 app.UseSession();
 app.UseAuthentication();
-app.UseMiddleware<SessionJwtMiddleware>(); 
+app.UseMiddleware<SessionJwtMiddleware>();
 app.UseAuthorization();
 
-app.MapHub<ChatHub>("/chatHub");
 app.MapControllers();
 
 app.Run();

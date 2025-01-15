@@ -22,16 +22,11 @@ public class GET_Task
 
     public string Status { get; set; }
 
-
-
-
+    public string UserEmail { get; set; }
 
     public string FileLink { get; set; } //file name
 
     public int Position { get; set; }
 
     public bool AvailableCheck { get; set; }
-
-    public ICollection<Guid> AssignedUsers {  get; set; }
-    public Dictionary<Guid, string> AssignedUsersEmails { get; set; } // UserId -> Email mapping
 }

@@ -23,7 +23,7 @@ namespace dai.api.Middleware
             {
                 try
                 {
-
+                    // Xác thực JWT
                     var claimsPrincipal = ValidateJwtToken(token);
                     context.User = claimsPrincipal; // Gán thông tin người dùng vào HttpContext
                 }

@@ -16,17 +16,15 @@ namespace dai.api.Controllers;
 [ApiController]
 public class ListController : ControllerBase
 {
-    private readonly ICollaboratorRepository _collaboratorRepository;
     private readonly IListRepository _listRepository;
     private readonly IDragAndDropRepository _dragAndDropRepository;
     private readonly AppDbContext _context;
 
-    public ListController(IListRepository listRepo, IDragAndDropRepository dragAndDropRepository, AppDbContext context, ICollaboratorRepository collaboratorRepository)
+    public ListController(IListRepository listRepo, IDragAndDropRepository dragAndDropRepository, AppDbContext context)
     {
         this._listRepository = listRepo;
         _dragAndDropRepository = dragAndDropRepository;
         _context = context;
-        _collaboratorRepository = collaboratorRepository;
     }
 
     private Guid? GetUserIdFromHeader()
@@ -91,21 +89,21 @@ public class ListController : ControllerBase
 
         try
         {
-            // Fetch the board and determine if the user is the owner
-            var board = await _context.Boards
-                                      .Include(b => b.Workspace)
-                                      .FirstOrDefaultAsync(b => b.Id == boardId);
-
+            // Xác thực quyền truy cập
+            var board = await _context.Boards.Include(b => b.Workspace).FirstOrDefaultAsync(b => b.Id == boardId);
             if (board == null)
                 return NotFound(new { message = "Board not found." });
 
-            bool isOwner = board.Workspace.UserId == userId;
+            var isOwner = board.Workspace.UserId == userId;
+            var isEditor = await _context.Collaborators
+                .AnyAsync(c => c.Board_Id == boardId && c.User_Id == userId && c.Permission == "Editor");
 
-            // Retrieve lists and tasks using repository
-            var listsAndTasks = await _listRepository.GetListsAndTasksByBoardIdAsync(boardId, userId.Value, isOwner);
+            if (!isOwner && !isEditor)
+                return StatusCode(403, new { message = "You do not have permission to access this board." });
 
-            // Map to DTO
-            var listAndTaskDtos = listsAndTasks.Select(l => new GET_ListAndTask
+            // Lấy danh sách và nhiệm vụ
+            var listAndTask = await _listRepository.GetListsAndTasksByBoardIdAsync(boardId);
+            var listAndTaskDtos = listAndTask?.Select(l => new GET_ListAndTask
             {
                 Id = l.Id,
                 Title = l.Title,
@@ -114,95 +112,33 @@ public class ListController : ControllerBase
                 Status = l.Status,
                 Position = l.Position,
                 NumberOfTaskInside = l.NumberOfTaskInside,
-                TaskInside = l.taskInList.Select(t => new GET_Task
-                {
-                    Id = t.Task.Id,
-                    Title = t.Task.Title,
-                    Create_At = t.Task.Create_At,
-                    Update_At = t.Task.Update_At,
-                    Finish_At = t.Task.Finish_At,
-                    Description = t.Task.Description,
-                    Status = t.Task.Status,
-                    Position = t.Task.Position,
-                    AvailableCheck = t.Task.AvailableCheck,
-                    AssignedUsers = t.Task.AssignedToList,
-                    FileLink = t.Task.FileName
-                }).ToList()
-            }).ToList();
+                TaskInside = l.taskInList
+                    .Where(t => t.Task != null)
+                    .Select(t => new GET_Task
+                    {
+                        Id = t.Task.Id,
+                        Title = t.Task.Title,
+                        Create_At = t.Task.Create_At,
+                        Update_At = t.Task.Update_At,
+                        Finish_At = t.Task.Finish_At,
+                        Description = t.Task.Description,
+                        Status = t.Task.Status,
+                        Position = t.Task.Position,
+                        AvailableCheck = t.Task.AvailableCheck,
+                        UserEmail = t.Task.User?.Email,
+                        FileLink = t.Task.FileName
+                    }).ToList()
+            }).ToList() ?? new List<GET_ListAndTask>(); // Trả về danh sách rỗng nếu không có dữ liệu
 
             return Ok(listAndTaskDtos);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}\n{ex.StackTrace}");
-            return StatusCode(500, "An error occurred while retrieving tasks.");
+            // Log lỗi để debug
+            Console.Error.WriteLine($"Error: {ex.Message}");
+            return StatusCode(500, "An error occurred while processing your request.");
         }
     }
-
-
-
-
-    //[HttpGet("board/{boardId:guid}")]
-    //public async Task<ActionResult<IEnumerable<GET_ListAndTask>>> GetListAndTaskByBoardId(Guid boardId)
-    //{
-    //    var userId = GetUserIdFromHeader();
-    //    if (userId == null)
-    //        return Unauthorized(new { message = "User not logged in." });
-
-    //    try
-    //    {
-    //        var board = await _context.Boards.Include(b => b.Workspace).FirstOrDefaultAsync(b => b.Id == boardId);
-    //        if (board == null)
-    //            return NotFound(new { message = "Board not found." });
-
-    //        var isOwner = board.Workspace.UserId == userId;
-    //        var isEditor = await _context.Collaborators
-    //            .AnyAsync(c => c.Board_Id == boardId && c.User_Id == userId && c.Permission == "Editor");
-
-    //        if (!isOwner && !isEditor)
-    //            return StatusCode(403, new { message = "You do not have permission to access this board." });
-
-    //        var listAndTask = await _listRepository.GetListsAndTasksByBoardIdAsync(boardId);
-    //        var listAndTaskDtos = listAndTask?.Select(l => new GET_ListAndTask
-    //        {
-    //            Id = l.Id,
-    //            Title = l.Title,
-    //            Create_At = l.Create_At,
-    //            Update_At = l.Update_At,
-    //            Status = l.Status,
-    //            Position = l.Position,
-    //            NumberOfTaskInside = l.NumberOfTaskInside,
-    //            TaskInside = l.taskInList
-    //                .Where(t => t.Task != null)
-    //                .Select(t => new GET_Task
-    //                {
-    //                    Id = t.Task.Id,
-    //                    Title = t.Task.Title,
-    //                    Create_At = t.Task.Create_At,
-    //                    Update_At = t.Task.Update_At,
-    //                    Finish_At = t.Task.Finish_At,
-    //                    Description = t.Task.Description,
-    //                    Status = t.Task.Status,
-    //                    Position = t.Task.Position,
-    //                    AvailableCheck = t.Task.AvailableCheck,
-    //                    AssignedUsers = t.Task.AssignedToList,
-    //                    AssignedUsersEmails = t.Task.AssignedToList.ToDictionary(
-    //                        userId => userId,
-    //                        userId => _context.Users.FirstOrDefault(u => u.Id == userId) ? .Email),
-    //                    //UserEmail = t.Task.User?.Email,
-    //                    //UserEmailId = t.Task.User?.Id ?? Guid.Empty,
-    //                    FileLink = t.Task.FileName
-    //                }).ToList()
-    //        }).ToList() ?? new List<GET_ListAndTask>(); // Trả về danh sách rỗng nếu không có dữ liệu
-
-    //        return Ok(listAndTaskDtos);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        Console.Error.WriteLine($"Error: {ex.Message}");
-    //        return StatusCode(500, "An error occurred while processing your request.");
-    //    }
-    //}
 
     // POST: api/List
     [HttpPost]

@@ -18,3 +18,4 @@ namespace dai.core.Models
         public ICollection<NoteLabelModel> NoteLabels { get; set; }
     }
 }
+    

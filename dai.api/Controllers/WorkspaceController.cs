@@ -1,10 +1,8 @@
 ﻿using AutoMapper;
 using dai.core.DTO.Workspace;
 using dai.core.Models;
-using dai.dataAccess.DbContext;
 using dai.dataAccess.IRepositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace dai.api.Controllers
@@ -15,13 +13,11 @@ namespace dai.api.Controllers
     {
         private readonly IWorkspaceRepository _workspaceRepository;
         private readonly IMapper _mapper;
-        private readonly AppDbContext _context;
 
-        public WorkspaceController(IWorkspaceRepository workspaceRepository, IMapper mapper, AppDbContext context)
+        public WorkspaceController(IWorkspaceRepository workspaceRepository, IMapper mapper)
         {
             _workspaceRepository = workspaceRepository;
             _mapper = mapper;
-            _context = context;
         }
 
         private Guid? GetUserIdFromHeader()
@@ -34,7 +30,7 @@ namespace dai.api.Controllers
             return null;
         }
 
-
+        // GET: api/workspace/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetWorkspace(Guid id)
         {
@@ -50,7 +46,7 @@ namespace dai.api.Controllers
                 return NotFound(new { message = "Workspace not found." });
             }
 
-
+            // Xác minh quyền sở hữu
             if (workspace.UserId != userId)
             {
                 return StatusCode(403, new { message = "You do not have permission to access this workspace." });
@@ -60,6 +56,7 @@ namespace dai.api.Controllers
             return Ok(workspaceDto);
         }
 
+        // POST: api/workspace
         [HttpPost]
         public async Task<IActionResult> CreateWorkspace([FromBody] CreateWorkspaceDto createWorkspaceDto)
         {
@@ -67,27 +64,6 @@ namespace dai.api.Controllers
             if (userId == null)
             {
                 return Unauthorized(new { message = "User not logged in." });
-            }
-
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
-            {
-                return Unauthorized(new { message = "User not found." });
-            }
-
-            var userWorkspaceCount = await _context.Workspaces
-                .Where(w => w.UserId == userId)
-                .CountAsync();
-            if (user.IsVipSupplier == true)
-            {
-                Console.WriteLine("User is VIP, allowing unlimited workspace creation.");
-            }
-            else
-            {
-                if (userWorkspaceCount >= 1)
-                {
-                    return StatusCode(403, new { message = "You need to be a VIP to create more than 1 workspace." });
-                }
             }
 
             var workspaceModel = _mapper.Map<WorkspaceModel>(createWorkspaceDto);
@@ -105,8 +81,7 @@ namespace dai.api.Controllers
             }
         }
 
-
-
+        // PUT: api/workspace/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateWorkspace(Guid id, [FromBody] UpdateWorkspaceDto updateWorkspaceDto)
         {
@@ -122,7 +97,7 @@ namespace dai.api.Controllers
                 return NotFound(new { message = "Workspace not found." });
             }
 
-
+            // Xác minh quyền sở hữu
             if (workspace.UserId != userId)
             {
                 return StatusCode(403, new { message = "You do not have permission to access this workspace." });
@@ -135,7 +110,7 @@ namespace dai.api.Controllers
             return NoContent();
         }
 
-
+        // DELETE: api/workspace/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteWorkspace(Guid id)
         {
@@ -151,7 +126,7 @@ namespace dai.api.Controllers
                 return NotFound(new { message = "Workspace not found." });
             }
 
-
+            // Xác minh quyền sở hữu
             if (workspace.UserId != userId)
             {
                 return StatusCode(403, new { message = "You do not have permission to access this workspace." });
@@ -162,7 +137,7 @@ namespace dai.api.Controllers
         }
 
 
-
+        // GET: api/workspace/user/{userId}
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetWorkspacesByUserId(Guid userId)
         {

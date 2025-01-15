@@ -1,4 +1,5 @@
-﻿using System;
+﻿using dai.core.DTO.Label;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,9 +19,11 @@ namespace dai.core.DTO.Note
         public bool? Bookmark { get; set; }
         public string? Color { get; set; }
         public bool? Archive { get; set; }
+        public bool? Trash { get; set; }
+        public DateTime TrashDate { get; set; }
         public Guid UserId { get; set; }
 
-
-        public List<byte[]>? Images { get; set; } = new List<byte[]>();
+        // Use List<byte[]> as per NoteModel
+        public List<string>? Images { get; set; }
     }
 }

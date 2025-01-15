@@ -16,7 +16,7 @@ using Azure.Storage.Blobs;
 using dai.api.Services.ServicesAPI;
 using dai.api.Services.ServiceExtension;
 
-
+// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace dai.api.Controllers;
 
@@ -39,6 +39,37 @@ public class UserController : ControllerBase
         _storageService = storageService;
     }
 
+    [HttpPost("authenticate")]
+    public async Task<IActionResult> Authenticate([FromBody] UserModel userObj)
+    {
+        if (userObj == null)
+            return BadRequest(new { Message = "Invalid user object" });
+
+        // Fetch the user with the provided email from the database
+        var user = await _context.Users
+            .FirstOrDefaultAsync(x => x.Email == userObj.Email);
+
+        if (user == null)
+            return NotFound(new { Message = "User Not Found" });
+
+        // Verify the provided password against the stored hashed password
+        if (!PasswordHasher.VerifyPassword(userObj.PasswordHash, user.PasswordHash))
+            return Unauthorized(new { Message = "Invalid Password" });
+
+        user.Token = CreateJwt(user);
+        var newAccessToken = user.Token;
+        var newRefreshToken = CreateRefreshToken();
+        user.RefreshToken = newRefreshToken;
+        user.RefreshTokenExpiryTime = DateTime.Now.AddDays(5);
+        await _context.SaveChangesAsync();
+
+        return Ok(new TokenApiDto()
+        {
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken
+        });
+    }
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserModel>>> GetAllUsers()
     {
@@ -47,43 +78,29 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetUserById(Guid id)
+    public async Task<ActionResult<UserModel>> GetUserById(Guid id)
     {
-        var user = await _context.Users
-
-
-
-
-
-            .FirstOrDefaultAsync(u => u.Id == id);
-
+        var user = await _userRepository.GetUserByIdAsync(id);
         if (user == null)
         {
             return NotFound(new { Message = "User not found" });
         }
 
-        return Ok(new
+        // Return the user including the AvatarImage URL
+        return Ok(new UserModel
         {
-            user.Id,
-            user.FullName,
-            user.UserName,
-            user.Email,
-            user.PhoneNumber,
-            user.AddedOn,
-            user.UpdatedOn,
-            user.Token,
-            user.RefreshToken,
-            user.RefreshTokenExpiryTime,
-            user.LastLoginIp,
-            user.AvatarImage,
-            user.IsVipSupplier,
-            user.VipExpiryDate,
-            user.LoginProvider,
-            user.IsEmailConfirm,
-            user.IsOnline,
+            UserName = user.UserName,
+            FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber,
+            TimeZoneId = user.TimeZoneId,
+            Email = user.Email,
+            AvatarImage = user.AvatarImage, // Make sure this property exists in UserModel
+                                            // Include other properties as needed
+            AddedOn = user.AddedOn,
+            UpdatedOn = user.UpdatedOn,
+            // etc...
         });
     }
-
 
     [HttpPost]
     public async Task<ActionResult<UserModel>> PostUser(POST_User postUser)
@@ -94,6 +111,7 @@ public class UserController : ControllerBase
             FullName = postUser.FullName,
             Email = postUser.UserEmail,
             PasswordHash = postUser.UserPassword,
+            TimeZoneId = postUser.TimeZoneId,
             AddedOn = DateTime.UtcNow,
             UpdatedOn = DateTime.UtcNow,
         };
@@ -153,12 +171,15 @@ public class UserController : ControllerBase
         if (!string.IsNullOrEmpty(userUpdated.UserContact))
             existingUser.PhoneNumber = userUpdated.UserContact;
 
+        if (!string.IsNullOrEmpty(userUpdated.TimeZoneId))
+            existingUser.TimeZoneId = userUpdated.TimeZoneId;
+
         string newAvatarUrl = null;
         if (userUpdated.AvatarImage != null)
         {
             try
             {
-
+                // Xóa ảnh cũ nếu tồn tại
                 if (!string.IsNullOrEmpty(existingUser.AvatarImage))
                 {
                     var deleteResult = await _storageService.DeleteFileAsync(existingUser.AvatarImage);
@@ -166,7 +187,7 @@ public class UserController : ControllerBase
                         return BadRequest(new { Message = "Failed to delete old avatar image" });
                 }
 
-
+                // Upload ảnh mới
                 var fileName = $"{Guid.NewGuid()}{Path.GetExtension(userUpdated.AvatarImage.FileName)}";
                 var folderName = "avatars";
                 var containerName = _configuration["AzureBlobStorage:ContainerName"];
@@ -193,8 +214,49 @@ public class UserController : ControllerBase
         if (!updateResult.Succeeded)
             return BadRequest(new { Message = "Failed to update profile", Errors = updateResult.Errors });
 
-
+        // Trả về URL avatar mới trong response
         return Ok(new { Message = "Profile updated successfully", NewAvatarUrl = newAvatarUrl });
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> DELETEUser(Guid id)
+    {
+        var result = await _userRepository.DeleteUserAsync(id);
+        if (!result)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+
+    [HttpPost("register")]
+
+    public async Task<IActionResult> RegisterUser([FromBody] UserModel userObj)
+    {
+        if (userObj == null)
+            return BadRequest();
+
+        if (await CheckEmailExistAsync(userObj.Email))
+            return BadRequest(new { Message = "Email Already Exist!" });
+
+
+        userObj.PasswordHash = PasswordHasher.HashPassword(userObj.PasswordHash);
+        userObj.Token = "";
+        await _context.Users.AddAsync(userObj);
+        await _context.SaveChangesAsync();
+        return Ok(new
+        {
+            Message = "User Registered!"
+        });
+    }
+
+    private Task<bool> CheckEmailExistAsync(string email)
+            => _context.Users.AnyAsync(x => x.Email == email);
+
+    private bool UserExists(Guid id)
+    {
+        return _context.Users.Any(e => e.Id == id);
     }
 
     private string CreateJwt(UserModel user)
@@ -280,33 +342,5 @@ public class UserController : ControllerBase
         });
     }
 
-    [HttpGet("online-users")]
-    public async Task<IActionResult> GetOnlineUsers()
-    {
-        var onlineUsers = await _context.Users
-                                        .Where(u => u.IsOnline.HasValue && u.IsOnline.Value) // Chỉ chọn true
-                                        .Select(u => new { u.Id, u.FullName, u.Email })
-                                        .ToListAsync();
 
-        return Ok(onlineUsers);
-    }
-
-    [HttpGet("is-vip/{id}")]
-    public async Task<IActionResult> CheckIfUserIsVip(Guid id)
-    {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-
-        if (user == null)
-        {
-            return NotFound(new { Message = "User not found" });
-        }
-
-        var isVip = user.IsVipSupplier.HasValue && user.IsVipSupplier.Value;
-
-        return Ok(new
-        {
-            IsVip = isVip,
-            Message = isVip ? "User is a VIP" : "User is not a VIP"
-        });
-    }
 }
