@@ -22,5 +22,4 @@ public class BoardModel
 
     public ICollection<TaskInListModel> taskInList { get; set; }
     public ICollection<CollaboratorModel> Collaborators { get; set; }
-
 }

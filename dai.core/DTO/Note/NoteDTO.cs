@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,9 +12,11 @@ namespace dai.core.DTO.Note
         public string Title { get; set; }
         public string? Description { get; set; }
         public string? Color { get; set; }
+        public DateTime? Reminder { get; set; }
         public bool? Bookmark { get; set; }
-
-
-        public List<string>? Images { get; set; } = new List<string>();
+        public bool? Archive { get; set; }
+        public bool? Trash { get; set; }
+        public IFormFileCollection? Images { get; set; } // New image uploads
+        public List<string>? DeletedImages { get; set; } // URLs of images to delete
     }
 }

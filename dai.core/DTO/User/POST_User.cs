@@ -27,4 +27,6 @@ public class POST_User
 
     [Required(ErrorMessage = "UserPassword is required.")]
     public string UserPassword { get; set; }
+
+    public string? TimeZoneId { get; set; }
 }

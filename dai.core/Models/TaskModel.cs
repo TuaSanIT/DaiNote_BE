@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-
-namespace dai.core.Models;
+﻿namespace dai.core.Models;
 
 public class TaskModel
 {
@@ -20,25 +18,12 @@ public class TaskModel
 
     public bool AvailableCheck { get; set; }
 
-    public string? FileName { get; set; } 
+    public string? FileName { get; set; } // For stroring file name
 
     public int Position { get; set; }
 
-
-
-
-
-    public string AssignedTo { get; set; }
-
-
-    [NotMapped]
-    public List<Guid> AssignedToList
-    {
-        get => string.IsNullOrEmpty(AssignedTo)
-                ? new List<Guid>()
-                : AssignedTo.Split(',').Select(Guid.Parse).ToList();
-        set => AssignedTo = string.Join(",", value);
-    }
+    public Guid? AssignTo { get; set; }
+    public UserModel User { get; set; }
 
     public ICollection<TaskInListModel> taskInList { get; set; }
 }

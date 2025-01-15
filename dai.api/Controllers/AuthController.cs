@@ -54,31 +54,6 @@ namespace dai.api.Controllers
             return null;
         }
 
-        [HttpGet("get-token/{userId}")]
-        public async Task<IActionResult> GetTokenByUserId(Guid userId)
-        {
-            try
-            {
-
-                var user = await _userManager.FindByIdAsync(userId.ToString());
-                if (user == null)
-                {
-                    return NotFound(new { message = "User not found." });
-                }
-
-
-                var token = GenerateToken(user);
-
-                return Ok(new { message = "Token generated successfully.", token });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while generating token for user.");
-                return StatusCode(500, new { message = "An error occurred while generating the token." });
-            }
-        }
-
-
         [HttpGet("validate-ownership/{resourceType}/{resourceId}")]
 public async Task<IActionResult> ValidateOwnership(string resourceType, Guid resourceId)
 {
@@ -88,7 +63,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
         return Unauthorized(new { message = "User not logged in." });
     }
 
-
+    // Determine the resource type and validate ownership
     switch (resourceType.ToLower())
     {
         case "workspace":
@@ -110,11 +85,11 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 return NotFound(new { message = "Board not found." });
             }
 
-
+            // Check if the user is the owner of the workspace associated with the board
             var workspaceOwner = await _dbContext.Workspaces
                 .AnyAsync(w => w.Id == board.WorkspaceId && w.UserId == userId);
 
-
+            // Check if the user is a collaborator with editor permission
             var isEditor = await _dbContext.Collaborators
                 .AnyAsync(c => c.Board_Id == resourceId && c.User_Id == userId && c.Permission == "Editor");
 
@@ -186,7 +161,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 return BadRequest("Invalid OTP provided.");
             }
 
-
+            // Xóa OTP sau khi xác thực thành công
             _otpStorage.Remove(email);
             return Ok("OTP verified successfully. Please provide your registration details.");
         }
@@ -209,7 +184,6 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 FullName = model.FullName,
                 PhoneNumber = model.PhoneNumber,
                 PasswordHash = model.Password,
-                AddedOn = DateTime.UtcNow,
                 EmailConfirmed = true // Bạn có thể cần xử lý xác thực email nếu cần
             };
 
@@ -242,23 +216,10 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
 
         private async Task<string> GetIpAddress()
         {
-
-            var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            if (!string.IsNullOrEmpty(remoteIp) && remoteIp != "::1")
-                return remoteIp;
-
-            try
-            {
-                using var httpClient = new HttpClient();
-                var response = await httpClient.GetStringAsync("https://api.ipify.org?format=json");
-                var json = JObject.Parse(response);
-                return json["ip"]?.ToString() ?? "Unknown";
-            }
-            catch
-            {
-                return "Unknown";
-            }
+            using var httpClient = new HttpClient();
+            var response = await httpClient.GetStringAsync("https://api.ipify.org?format=json");
+            var json = JObject.Parse(response);
+            return json["ip"]?.ToString();
         }
         private async Task<string> GetLocationFromIp(string ipAddress)
         {
@@ -300,36 +261,29 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             if (!await _userManager.IsEmailConfirmedAsync(user))
                 return BadRequest("You need to confirm your email before logging in.");
 
-
-            var roles = await _userManager.GetRolesAsync(user);
-            var primaryRole = roles.FirstOrDefault() ?? "User";
-
-
+            // Lấy địa chỉ IP của người dùng
             string ipAddress = await GetIpAddress();
 
-
+            // Kiểm tra nếu địa chỉ IP là mới
             bool isNewIp = await IsNewLoginIpAsync(user.Id, ipAddress);
 
             if (isNewIp)
             {
-
+                // Lấy thông tin vị trí từ địa chỉ IP
                 var location = await GetLocationFromIp(ipAddress);
                 _logger.LogInformation($"Location from IP ({ipAddress}): {location}");
 
-
+                // Gửi email thông báo
                 string loginTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 SendLoginNotificationEmail(user.Email, loginTime, location);
                 await SaveUserIpAsync(user.Id, ipAddress);
             }
 
-            user.IsOnline = true;
-            await _dbContext.SaveChangesAsync();
-
             string accessToken = GenerateToken(user);
             string refreshToken = GenerateRefreshToken();
             await SaveRefreshTokenAsync(user.Id.ToString(), refreshToken);
 
-
+            // Lưu JWT vào session
             HttpContext.Session.SetString("JwtToken", accessToken);
             HttpContext.Session.SetString("UserId", user.Id.ToString());
 
@@ -337,8 +291,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             {
                 message = "Login successful.",
                 accessToken = accessToken,
-                refreshToken = refreshToken,
-                role = primaryRole
+                refreshToken = refreshToken
             });
         }
 
@@ -402,82 +355,6 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             smtp.Send(emailMessage);
             smtp.Disconnect(true);
         }
-        [HttpGet("validate-token")]
-        public IActionResult ValidateToken(
-    [FromHeader(Name = "Authorization")] string authorization,
-    [FromHeader(Name = "UserId")] string userIdHeader)
-        {
-
-            if (!string.IsNullOrEmpty(userIdHeader) && Guid.TryParse(userIdHeader, out var userIdGuid))
-            {
-
-                if (IsValidUserId(userIdGuid))
-                {
-                    return Ok(new { isValid = true, userId = userIdGuid });
-                }
-                else
-                {
-                    return Unauthorized(new { isValid = false, message = "Invalid userId." });
-                }
-            }
-
-
-            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
-            {
-                return Unauthorized(new { isValid = false, message = "Token missing or invalid." });
-            }
-
-
-            var token = authorization.Substring("Bearer ".Length).Trim();
-
-            try
-            {
-
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var validationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]))
-                };
-
-
-                var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
-
-
-                var jwtToken = validatedToken as JwtSecurityToken;
-                var tokenUserId = jwtToken?.Claims.FirstOrDefault(c => c.Type == "userId")?.Value;
-
-                if (Guid.TryParse(tokenUserId, out var tokenUserIdGuid))
-                {
-
-                    return Ok(new { isValid = true, userId = tokenUserIdGuid });
-                }
-                else
-                {
-
-                    return Unauthorized(new { isValid = false, message = "Token does not contain a valid userId." });
-                }
-            }
-            catch (SecurityTokenException)
-            {
-
-                return Unauthorized(new { isValid = false, message = "Token is invalid or expired." });
-            }
-        }
-
-        private bool IsValidUserId(Guid userId)
-        {
-            var validUserIds = new List<Guid>
-    {
-        Guid.Parse("some-valid-guid-1"),
-        Guid.Parse("some-valid-guid-2")
-    };
-
-            return validUserIds.Contains(userId);
-        }
 
         private string GenerateToken(UserModel? user)
         {
@@ -536,7 +413,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             return new Random().Next(100000, 999999).ToString();
         }
 
-
+        //Login with Google
         [HttpPost("login-google")]
         public async Task<IActionResult> LoginWithGoogle([FromBody] GoogleLoginRequest request)
         {
@@ -545,7 +422,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
 
             try
             {
-
+                // Xác thực ID Token của Google
                 var payload = await ValidateGoogleTokenAsync(request.IdToken);
                 if (payload == null)
                     return BadRequest("Invalid Google token.");
@@ -553,7 +430,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 var email = payload.Email;
                 var user = await _userManager.FindByEmailAsync(email);
 
-
+                // Nếu người dùng chưa tồn tại, tạo mới
                 if (user == null)
                 {
                     user = new UserModel
@@ -561,10 +438,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                         Email = email,
                         UserName = email.Split('@')[0],
                         FullName = payload.Name,
-                        EmailConfirmed = true, // Google đã xác minh email,
-                        AddedOn = DateTime.UtcNow,
-                        IsOnline = true,
-                        PhoneNumber = "0000000000"
+                        EmailConfirmed = true // Google đã xác minh email
                     };
 
                     var result = await _userManager.CreateAsync(user);
@@ -574,33 +448,28 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                     }
                 }
 
+                // Lấy địa chỉ IP của người dùng
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
-                var ipAddress = !string.IsNullOrEmpty(request.ClientIp)
-                    ? request.ClientIp
-                    : HttpContext.Connection.RemoteIpAddress?.ToString();
-
-
+                // Kiểm tra nếu địa chỉ IP là mới
                 if (await IsNewLoginIpAsync(user.Id, ipAddress))
                 {
-
+                    // Gửi thông báo email khi đăng nhập từ IP mới
                     var location = await GetLocationFromIp(ipAddress);
                     SendLoginNotificationEmail(user.Email, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), location);
 
-
+                    // Lưu lại địa chỉ IP mới
                     await SaveUserIpAsync(user.Id, ipAddress);
                 }
 
-
+                // Tạo JWT token
                 var token = GenerateToken(user);
 
-
+                // Lưu JWT vào session
                 HttpContext.Session.SetString("JwtToken", token);
                 HttpContext.Session.SetString("UserId", user.Id.ToString());
 
-                user.IsOnline = true;
-                await _userManager.AddToRoleAsync(user, "User");
-                await _dbContext.SaveChangesAsync();
-                return Ok(new { message = "Login successful.", token, role = "User" });
+                return Ok(new { message = "Login successful.", token });
             }
             catch (Exception ex)
             {
@@ -615,7 +484,7 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             {
                 var settings = new GoogleJsonWebSignature.ValidationSettings
                 {
-
+                    //Clock = Google.Apis.Util.SystemClock.Default,
                     Clock = GoogleLoginHelper.GetClock(),
                     Audience = new[] { _configuration["Google:ClientId"] } // Google Client ID từ cấu hình
                 };
@@ -628,65 +497,43 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
             }
         }
 
-
+        //Forget Password
         [HttpPost("forgot-password/{email}")]
         public async Task<IActionResult> ForgotPassword(string email)
         {
-            if (string.IsNullOrEmpty(email))
-            {
-                return BadRequest("Email is required.");
-            }
-
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
                 return BadRequest("User not found.");
             }
 
-            string otp = GenerateOtp();
-            _otpStorage[email] = otp; 
-            try
-            {
-                await SendOtpEmailAsync(email, otp);
-                return Ok(new { message = "OTP has been sent to your email.", step = "Please verify the OTP to reset your password." });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send OTP email.");
-                return StatusCode(500, "Failed to send OTP email. Please try again later.");
-            }
-        }
+            string otp = GenerateOtp();  // Generate OTP
+            _otpStorage[email] = otp;    // Store OTP temporarily
 
+            string sendEmail = SendForgotPasswordEmail(email, otp);  // Send OTP email
+            return Ok(new { message = sendEmail, step = "Please verify your email with the OTP." });
+        }
 
         [HttpPost("verify-otp-for-password/{email}/{otp}")]
         public IActionResult VerifyOtpForPassword(string email, string otp)
         {
-            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(otp))
-            {
-                return BadRequest("Email and OTP are required.");
-            }
-
             if (!_otpStorage.TryGetValue(email, out var storedOtp) || storedOtp != otp)
             {
                 return BadRequest("Invalid OTP provided.");
             }
 
+            // Remove OTP after successful verification
             _otpStorage.Remove(email);
-            return Ok(new { message = "OTP verified successfully. You can now reset your password." });
-        }
 
+            return Ok("OTP verified successfully. You can now reset your password.");
+        }
 
         [HttpPost("reset-password/{email}")]
         public async Task<IActionResult> ResetPassword(string email, [FromBody] PasswordResetModel model)
         {
-            if (string.IsNullOrEmpty(email))
-            {
-                return BadRequest("Email is required.");
-            }
-
             if (model == null || string.IsNullOrEmpty(model.NewPassword) || model.NewPassword.Length < 6)
             {
-                return BadRequest("Invalid password or password too short. Password must be at least 6 characters.");
+                return BadRequest("Invalid password or password too short.");
             }
 
             var user = await _userManager.FindByEmailAsync(email);
@@ -695,90 +542,64 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
                 return BadRequest("User not found.");
             }
 
-
-            try
+            var result = await _userManager.RemovePasswordAsync(user);  // Remove the current password
+            if (!result.Succeeded)
             {
-                var removePasswordResult = await _userManager.RemovePasswordAsync(user);
-                if (!removePasswordResult.Succeeded)
-                {
-                    var errors = string.Join(", ", removePasswordResult.Errors.Select(e => e.Description));
-                    return BadRequest($"Failed to remove old password: {errors}");
-                }
-
-                var addPasswordResult = await _userManager.AddPasswordAsync(user, model.NewPassword);
-                if (!addPasswordResult.Succeeded)
-                {
-                    var errors = string.Join(", ", addPasswordResult.Errors.Select(e => e.Description));
-                    return BadRequest($"Failed to set new password: {errors}");
-                }
-
-                return Ok(new { message = "Password has been successfully reset." });
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return BadRequest($"Password reset failed: {errors}");
             }
-            catch (Exception ex)
+
+            result = await _userManager.AddPasswordAsync(user, model.NewPassword);  // Set the new password
+            if (!result.Succeeded)
             {
-                _logger.LogError(ex, "An error occurred while resetting the password.");
-                return StatusCode(500, "An error occurred while resetting the password. Please try again later.");
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return BadRequest($"Password reset failed: {errors}");
             }
+
+            return Ok("Password has been successfully reset.");
         }
 
-        private async Task SendOtpEmailAsync(string email, string otp)
+        private string SendForgotPasswordEmail(string email, string resetLink)
         {
             string smtpEmail = _configuration["Smtp:Email"];
             string smtpPassword = _configuration["Smtp:Password"];
             string smtpHost = _configuration["Smtp:Host"];
             int smtpPort = int.Parse(_configuration["Smtp:Port"]);
 
-
             StringBuilder emailMessage = new StringBuilder();
             emailMessage.AppendLine("<html>");
             emailMessage.AppendLine("<body>");
-            emailMessage.AppendLine($"<p>Dear {email},</p>");
-            emailMessage.AppendLine("<p>We received a request to reset your password. Please use the following OTP code to reset your password:</p>");
-            emailMessage.AppendLine($"<h2 style='color:blue'>{otp}</h2>");
-            emailMessage.AppendLine("<p>This OTP code is valid for 15 minutes. If you did not request this, please ignore this email.</p>");
+            emailMessage.AppendLine($"<p> Dear {email}, </p>");
+            emailMessage.AppendLine("<p>We received a request to reset your password. To reset your password, please click the link below:</p>");
+            emailMessage.AppendLine($"<p><a href='{resetLink}'>Click here to reset your password</a></p>");
+            emailMessage.AppendLine("<p>If you did not request this, please ignore this email.</p>");
             emailMessage.AppendLine("<br>");
-            emailMessage.AppendLine("<p>Best regards,</p>");
+            emailMessage.AppendLine("<p> Best regards, </p>");
             emailMessage.AppendLine("<p><strong>DAI</strong></p>");
             emailMessage.AppendLine("</body>");
             emailMessage.AppendLine("</html>");
 
             string message = emailMessage.ToString();
-            var emailToSend = new MimeMessage();
-            emailToSend.To.Add(MailboxAddress.Parse(email));
-            emailToSend.From.Add(MailboxAddress.Parse(smtpEmail));
-            emailToSend.Subject = "Password Reset OTP - DAI";
-            emailToSend.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = message };
-
+            var _email = new MimeMessage();
+            _email.To.Add(MailboxAddress.Parse(email));
+            _email.From.Add(MailboxAddress.Parse(smtpEmail));
+            _email.Subject = "Password Reset Request from DAI";
+            _email.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = message };
 
             using var smtp = new SmtpClient();
-            await smtp.ConnectAsync(smtpHost, smtpPort, MailKit.Security.SecureSocketOptions.StartTls);
-            await smtp.AuthenticateAsync(smtpEmail, smtpPassword);
-            await smtp.SendAsync(emailToSend);
-            await smtp.DisconnectAsync(true);
+            smtp.Connect(smtpHost, smtpPort, MailKit.Security.SecureSocketOptions.StartTls);
+            smtp.Authenticate(smtpEmail, smtpPassword);
+            smtp.Send(_email);
+            smtp.Disconnect(true);
+            return "A password reset link has been sent to your email.";
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout(Guid userId)
+        public IActionResult Logout()
         {
-
-            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-
-
-            if (user == null)
-            {
-                return NotFound(new { message = "User not found." });
-            }
-
-
             HttpContext.Session.Clear(); // Xóa toàn bộ session
-            user.IsOnline = false;
-
-
-            await _dbContext.SaveChangesAsync();
-
             return Ok(new { message = "Logout successful." });
         }
-
 
         public class PasswordResetModel
         {
@@ -794,7 +615,6 @@ public async Task<IActionResult> ValidateOwnership(string resourceType, Guid res
         public class GoogleLoginRequest
         {
             public string IdToken { get; set; }
-            public string ClientIp { get; set; }
         }
 
         public class UserRegistrationModel

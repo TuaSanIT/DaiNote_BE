@@ -17,10 +17,12 @@ public class UserModel : IdentityUser<Guid>
     public string? LoginProvider { get; set; }
     public bool? IsEmailConfirm { get; set; }
     public bool? IsOnline { get; set; } = false;
-    public DateTime? LastOnlineAt { get; set; } 
-    public string? Role { get; set; } 
-    public bool IsBanned { get; set; } = false; 
+    public DateTime? LastOnlineAt { get; set; }
+    public string? Role { get; set; }
+    public bool IsBanned { get; set; } = false;
 
+// Add TimeZoneId property
+public string? TimeZoneId { get; set; } = "UTC"; // Default to UTC
 
     public ICollection<WorkspaceModel> Workspace { get; set; } = new List<WorkspaceModel>();
     public ICollection<CollaboratorModel> Collaborator { get; set; } = new List<CollaboratorModel>();
@@ -29,4 +31,8 @@ public class UserModel : IdentityUser<Guid>
     public ICollection<TaskModel> Task { get; set; } = new List<TaskModel>();
     public ICollection<TransactionModel> Transactions { get; set; } = new List<TransactionModel>();
 
+    ////Message là dùng Guid
+    //public virtual ICollection<Message> MessageReceivers { get; } = new List<Message>();
+    //public virtual ICollection<Message> MessageSenders { get; } = new List<Message>();
 }
+

@@ -15,7 +15,7 @@ namespace dai.api.Services.ServiceExtension
             _context = context;
         }
 
-
+        // Method to invalidate a token by saving it in the revoked tokens table
         public async Task InvalidateTokenAsync(string token, string userId, DateTime tokenExpiration)
         {
             var revokedToken = new RevokedToken
@@ -31,14 +31,14 @@ namespace dai.api.Services.ServiceExtension
             await _context.SaveChangesAsync();
         }
 
-
+        // Method to check if a token has been revoked
         public async Task<bool> IsTokenRevokedAsync(string token)
         {
             return await _context.RevokedTokens
                 .AnyAsync(rt => rt.Token == token && !rt.IsActive && rt.Expiration > DateTime.UtcNow);
         }
 
-
+        // Method to get token expiration (useful for invalidation logic)
         public DateTime? GetTokenExpiration(string token)
         {
             try

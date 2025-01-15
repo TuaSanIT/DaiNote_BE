@@ -166,5 +166,265 @@ namespace dai.api.Services.ServicesAPI
             await smtp.SendAsync(email);
             smtp.Disconnect(true);
         }
+        public async Task SendNoteDeletionNotificationAsync(string toEmail, string noteTitle, DateTime deletionDate)
+        {
+            var email = new MimeMessage();
+            email.Sender = MailboxAddress.Parse(emailSettings.Email);
+            email.To.Add(MailboxAddress.Parse(toEmail));
+            email.Subject = "Reminder: Your Note Will Be Deleted Soon";
+
+            var builder = new BodyBuilder
+            {
+                HtmlBody = $@"
+        <html>
+           <head>
+            <style>
+                body {{
+                    font-family: 'Arial', sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f6f8fa;
+                    color: #24292f;
+                }}
+                .container {{
+                    width: 100%;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background-color: #ffffff;
+                    padding: 20px;
+                    border-radius: 6px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 20px;
+                }}
+                .header h1 {{
+                    font-size: 24px;
+                    color: #0366d6;
+                    margin: 0;
+                }}
+                .content {{
+                    margin-bottom: 30px;
+                    font-size: 16px;
+                    line-height: 1.5;
+                }}
+                .cta-button {{
+                    display: inline-block;
+                    background-color: #28a745;
+                    color: #ffffff;
+                    padding: 12px 24px;
+                    font-size: 16px;
+                    text-align: center;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    margin-top: 20px;
+                    transition: background-color 0.2s ease;
+                }}
+                .cta-button:hover {{
+                    background-color: #218838;
+                }}
+                .footer {{
+                    font-size: 14px;
+                    text-align: center;
+                    color: #6a737d;
+                }}
+            </style>
+        </head>
+            <body>
+                <div class='container'>
+                    <h1>Important: Note Deletion Notification</h1>
+                    <p>Hello,</p>
+                    <p>This is a reminder that your note titled <strong>{noteTitle}</strong> is scheduled for deletion on <strong>{deletionDate:MMMM dd, yyyy}</strong>.</p>
+                    <p>If you want to retain this note, please take action before the scheduled deletion date.</p>
+                    <p>Thank you for using our service!</p>
+                    <div class='footer'>
+                        <p>Dai Note Team</p>
+                    </div>
+                </div>
+            </body>
+        </html>"
+            };
+
+            email.Body = builder.ToMessageBody();
+
+            using var smtp = new SmtpClient();
+            smtp.Connect(emailSettings.Host, emailSettings.Port, SecureSocketOptions.StartTls);
+            smtp.Authenticate(emailSettings.Email, emailSettings.Password);
+            await smtp.SendAsync(email);
+            smtp.Disconnect(true);
+        }
+
+        public async Task SendNoteRemiderNotificationAsync(string toEmail, string noteTitle, DateTime reminderDate)
+        {
+            var email = new MimeMessage();
+            email.Sender = MailboxAddress.Parse(emailSettings.Email);
+            email.To.Add(MailboxAddress.Parse(toEmail));
+            email.Subject = "You have a reminder on your note";
+
+            var builder = new BodyBuilder
+            {
+                HtmlBody = $@"
+        <html>
+           <head>
+            <style>
+                body {{
+                    font-family: 'Arial', sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f6f8fa;
+                    color: #24292f;
+                }}
+                .container {{
+                    width: 100%;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background-color: #ffffff;
+                    padding: 20px;
+                    border-radius: 6px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 20px;
+                }}
+                .header h1 {{
+                    font-size: 24px;
+                    color: #0366d6;
+                    margin: 0;
+                }}
+                .content {{
+                    margin-bottom: 30px;
+                    font-size: 16px;
+                    line-height: 1.5;
+                }}
+                .cta-button {{
+                    display: inline-block;
+                    background-color: #28a745;
+                    color: #ffffff;
+                    padding: 12px 24px;
+                    font-size: 16px;
+                    text-align: center;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    margin-top: 20px;
+                    transition: background-color 0.2s ease;
+                }}
+                .cta-button:hover {{
+                    background-color: #218838;
+                }}
+                .footer {{
+                    font-size: 14px;
+                    text-align: center;
+                    color: #6a737d;
+                }}
+            </style>
+        </head>
+            <body>
+                <div class='container'>
+                    <h1>Important: Note Deletion Notification</h1>
+                    <p>Hello,</p>
+                    <p>This is a reminder that your note titled <strong>{noteTitle}</strong> is scheduled on <strong>{reminderDate:MMMM dd, yyyy}</strong>.</p>
+                    <p>If you want to retain this note, please take action before the scheduled deletion date.</p>
+                    <p>Thank you for using our service!</p>
+                    <div class='footer'>
+                        <p>Dai Note Team</p>
+                    </div>
+                </div>
+            </body>
+        </html>"
+            };
+
+            email.Body = builder.ToMessageBody();
+
+            using var smtp = new SmtpClient();
+            smtp.Connect(emailSettings.Host, emailSettings.Port, SecureSocketOptions.StartTls);
+            smtp.Authenticate(emailSettings.Email, emailSettings.Password);
+            await smtp.SendAsync(email);
+            smtp.Disconnect(true);
+        }
+
+        public async Task SendTaskDeadlineReminderAsync(string toEmail, string taskTitle, DateTime deadline)
+        {
+            var email = new MimeMessage();
+            email.Sender = MailboxAddress.Parse(emailSettings.Email);
+            email.To.Add(MailboxAddress.Parse(toEmail));
+            email.Subject = "Task Deadline Reminder";
+
+            var builder = new BodyBuilder
+            {
+                HtmlBody = $@"
+<head>
+            <style>
+                body {{
+                    font-family: 'Arial', sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f6f8fa;
+                    color: #24292f;
+                }}
+                .container {{
+                    width: 100%;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background-color: #ffffff;
+                    padding: 20px;
+                    border-radius: 6px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 20px;
+                }}
+                .header h1 {{
+                    font-size: 24px;
+                    color: #0366d6;
+                    margin: 0;
+                }}
+                .content {{
+                    margin-bottom: 30px;
+                    font-size: 16px;
+                    line-height: 1.5;
+                }}
+                .cta-button {{
+                    display: inline-block;
+                    background-color: #28a745;
+                    color: #ffffff;
+                    padding: 12px 24px;
+                    font-size: 16px;
+                    text-align: center;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    margin-top: 20px;
+                    transition: background-color 0.2s ease;
+                }}
+                .cta-button:hover {{
+                    background-color: #218838;
+                }}
+                .footer {{
+                    font-size: 14px;
+                    text-align: center;
+                    color: #6a737d;
+                }}
+            </style>
+        </head>
+        <html>
+            <body>
+                <h1>Task Deadline Reminder</h1>
+                <p>This is a reminder that the task titled <strong>{taskTitle}</strong> is due on <strong>{deadline:MMMM dd, yyyy}</strong>.</p>
+                <p>Please ensure to complete the task on time.</p>
+            </body>
+        </html>"
+            };
+
+            email.Body = builder.ToMessageBody();
+
+            using var smtp = new SmtpClient();
+            smtp.Connect(emailSettings.Host, emailSettings.Port, SecureSocketOptions.StartTls);
+            smtp.Authenticate(emailSettings.Email, emailSettings.Password);
+            await smtp.SendAsync(email);
+            smtp.Disconnect(true);
+        }
+
     }
 }

@@ -5,7 +5,7 @@ namespace dai.core.Models;
 
 public class TaskInListModel
 {
-    public Guid Id { get; set; }  
+    public Guid Id { get; set; }  // Create a table own primary key
 
     public Guid Board_Id { get; set; }
     public BoardModel Board { get; set; }
